@@ -21,7 +21,7 @@ Route::middleware(['auth'])->group(function () {
     // Profile - All roles
     Route::get('/user/profile', Profile::class)->name('user.profile');
 
-    // STAFF LEVEL - All roles can access
+    // Staff Level - All authenticated users
     Route::prefix('attendance')->name('attendance.')->group(function () {
         Route::get('/', App\Livewire\Staff\Attendance\Index::class)->name('index');
         Route::get('/check-in', App\Livewire\Staff\Attendance\CheckIn::class)->name('check-in');
@@ -33,10 +33,29 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{leaveRequest}/print', [PrintController::class, 'leaveRequest'])->name('print');
     });
 
-    // HR LEVEL - Users management for HR+
+    // HR Level and above
     Route::middleware(['role:hr,director,admin'])->group(function () {
         Route::get('/users', Index::class)->name('users.index');
+
+        // Future HR routes
+        // Route::prefix('hr')->name('hr.')->group(function () {
+        //     Route::get('/schedules', App\Livewire\HR\Schedules\Index::class)->name('schedules.index');
+        //     Route::get('/leave-balances', App\Livewire\HR\LeaveBalances\Index::class)->name('leave-balances.index');
+        //     Route::get('/reports', App\Livewire\HR\Reports\Index::class)->name('reports.index');
+        // });
     });
+
+    // Manager Level and above (for future use)
+    // Route::middleware(['role:manager,hr,director,admin'])->prefix('manager')->name('manager.')->group(function () {
+    //     Route::get('/team-attendance', App\Livewire\Manager\TeamAttendance::class)->name('team-attendance');
+    //     Route::get('/approve-leaves', App\Livewire\Manager\ApproveLeaves::class)->name('approve-leaves');
+    // });
+
+    // Director Level and above (for future use)
+    // Route::middleware(['role:director,admin'])->prefix('director')->name('director.')->group(function () {
+    //     Route::get('/departments', App\Livewire\Director\Departments\Index::class)->name('departments.index');
+    //     Route::get('/office-locations', App\Livewire\Director\OfficeLocations\Index::class)->name('office-locations.index');
+    // });
 });
 
 require __DIR__ . '/auth.php';

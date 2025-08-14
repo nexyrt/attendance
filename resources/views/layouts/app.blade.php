@@ -8,6 +8,7 @@
 
         <title>{{ config('app.name', 'Laravel') }}</title>
 
+        <link rel="icon" type="image/png" href="{{ asset('/assets/images/jkb.png') }}">
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 
@@ -52,7 +53,7 @@
                 <x-side-bar smart collapsible>
                     <x-slot:brand>
                         <div class="mt-8 flex items-center justify-center">
-                            <img src="{{ asset('/assets/images/tsui.png') }}" width="40" height="40" />
+                            <img src="{{ asset('/assets/images/jkb.png') }}" width="40" height="40" />
                         </div>
                     </x-slot:brand>
 
