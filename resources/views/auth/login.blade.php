@@ -1,15 +1,15 @@
 <x-guest-layout>
     <div class="my-6 flex items-center justify-center">
-        <img src="{{ asset('/assets/images/tsui.png') }}" />
+        <img src="{{ asset('/assets/images/jkb.png') }}" />
     </div>
 
     <form method="POST" action="{{ route('login') }}">
         @csrf
 
         <div class="space-y-4">
-            <x-input label="Email *" type="email" name="email" :value="old('email', 'test@example.com')" required autofocus autocomplete="username" />
+            <x-input label="Email *" type="email" name="email" placeholder="admin@gmail.com" required autofocus autocomplete="username" />
 
-            <x-password label="Password *" type="password" name="password" required autocomplete="current-password" />
+            <x-password label="Password *" type="password" name="password" required autocomplete="current-password" placeholder="********" />
         </div>
 
         <div class="block mt-4">
