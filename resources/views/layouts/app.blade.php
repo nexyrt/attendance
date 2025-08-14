@@ -1,67 +1,97 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" x-data="tallstackui_darkTheme()">
 
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'Laravel') }}</title>
+        <title>{{ config('app.name', 'Laravel') }}</title>
 
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
+        <link rel="preconnect" href="https://fonts.bunny.net">
+        <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 
-    <tallstackui:script />
-    @livewireStyles
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
+        <tallstackui:script />
+        @livewireStyles
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
+    </head>
 
-<body class="font-sans antialiased" x-cloak x-data="{ name: @js(auth()->user()->name) }" x-on:name-updated.window="name = $event.detail.name"
-    x-bind:class="{ 'dark bg-gray-800': darkTheme, 'bg-gray-100': !darkTheme }">
-    <x-layout>
-        <x-slot:top>
-            <x-dialog />
-            <x-toast />
-        </x-slot:top>
-        <x-slot:header>
-            <x-layout.header>
-                <x-slot:left>
-                    <x-theme-switch />
-                </x-slot:left>
-                <x-slot:right>
-                    <x-dropdown>
-                        <x-slot:action>
-                            <div>
-                                <button class="cursor-pointer" x-on:click="show = !show">
-                                    <span class="text-base font-semibold text-primary-500" x-text="name"></span>
-                                </button>
-                            </div>
-                        </x-slot:action>
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <x-dropdown.items :text="__('Profile')" :href="route('user.profile')" />
-                            <x-dropdown.items :text="__('Logout')"
-                                onclick="event.preventDefault(); this.closest('form').submit();" separator />
-                        </form>
-                    </x-dropdown>
-                </x-slot:right>
-            </x-layout.header>
-        </x-slot:header>
-        <x-slot:menu>
-            <x-side-bar smart collapsible>
-                <x-slot:brand>
-                    <div class="mt-8 flex items-center justify-center">
-                        <img src="{{ asset('/assets/images/tsui.png') }}" width="40" height="40" />
-                    </div>
-                </x-slot:brand>
-                <x-side-bar.item text="Dashboard" icon="home" :route="route('dashboard')" />
-                <x-side-bar.item text="Users" icon="users" :route="route('users.index')" />
-                <x-side-bar.item text="Welcome Page" icon="arrow-uturn-left" :route="route('welcome')" />
-            </x-side-bar>
-        </x-slot:menu>
-        {{ $slot }}
-    </x-layout>
-    @livewireScripts
-</body>
+    <body class="font-sans antialiased" x-cloak x-data="{ name: @js(auth()->user()->name) }"
+        x-on:name-updated.window="name = $event.detail.name"
+        x-bind:class="{ 'dark bg-gray-800': darkTheme, 'bg-gray-100': !darkTheme }">
+        <x-layout>
+            <x-slot:top>
+                <x-dialog />
+                <x-toast />
+            </x-slot:top>
+            <x-slot:header>
+                <x-layout.header>
+                    <x-slot:left>
+                        <x-theme-switch />
+                    </x-slot:left>
+                    <x-slot:right>
+                        <x-dropdown>
+                            <x-slot:action>
+                                <div>
+                                    <button class="cursor-pointer" x-on:click="show = !show">
+                                        <span class="text-base font-semibold text-primary-500" x-text="name"></span>
+                                    </button>
+                                </div>
+                            </x-slot:action>
+                            <form method="POST" action="{{ route('logout') }}">
+                                @csrf
+                                <x-dropdown.items :text="__('Profile')" :href="route('user.profile')" wire:navigate />
+                                <x-dropdown.items :text="__('Logout')"
+                                    onclick="event.preventDefault(); this.closest('form').submit();" separator />
+                            </form>
+                        </x-dropdown>
+                    </x-slot:right>
+                </x-layout.header>
+            </x-slot:header>
+            <x-slot:menu>
+                <x-side-bar smart collapsible>
+                    <x-slot:brand>
+                        <div class="mt-8 flex items-center justify-center">
+                            <img src="{{ asset('/assets/images/tsui.png') }}" width="40" height="40" />
+                        </div>
+                    </x-slot:brand>
+
+                    {{-- Dashboard - All roles --}}
+                    <x-side-bar.item text="Dashboard" icon="home" :route="route('dashboard')" wire:navigate />
+
+                    {{-- Staff Level - All roles can access --}}
+                    <x-side-bar.item text="My Attendance" icon="clock" :route="route('attendance.index')" wire:navigate />
+                    <x-side-bar.item text="Check In/Out" icon="cursor-arrow-rays" :route="route('attendance.check-in')" wire:navigate />
+                    <x-side-bar.item text="My Leaves" icon="calendar-days" :route="route('leave-requests.index')" wire:navigate />
+
+                    {{-- Manager Level --}}
+                    @if (in_array(auth()->user()->role, ['manager', 'hr', 'director', 'admin']))
+                        <x-side-bar.separator text="Management" />
+                        {{-- <x-side-bar.item text="Team Attendance" icon="users" :route="route('manager.team-attendance')" wire:navigate /> --}}
+                        {{-- <x-side-bar.item text="Approve Leaves" icon="check-circle" :route="route('manager.approve-leaves')" wire:navigate /> --}}
+                    @endif
+
+                    {{-- HR Level --}}
+                    @if (in_array(auth()->user()->role, ['hr', 'director', 'admin']))
+                        <x-side-bar.separator text="HR Management" />
+                        <x-side-bar.item text="Users" icon="user-group" :route="route('users.index')" wire:navigate />
+                        {{-- <x-side-bar.item text="Schedules" icon="calendar" :route="route('hr.schedules.index')" wire:navigate /> --}}
+                        {{-- <x-side-bar.item text="Leave Balances" icon="scale" :route="route('hr.leave-balances.index')" wire:navigate /> --}}
+                        {{-- <x-side-bar.item text="Reports" icon="chart-bar" :route="route('hr.reports.index')" wire:navigate /> --}}
+                    @endif
+
+                    {{-- Director Level --}}
+                    @if (in_array(auth()->user()->role, ['director', 'admin']))
+                        <x-side-bar.separator text="Strategic" />
+                        {{-- <x-side-bar.item text="Departments" icon="building-office" :route="route('director.departments.index')" wire:navigate /> --}}
+                        {{-- <x-side-bar.item text="Office Locations" icon="map-pin" :route="route('director.office-locations.index')" wire:navigate /> --}}
+                    @endif
+
+                </x-side-bar>
+            </x-slot:menu>
+            {{ $slot }}
+        </x-layout>
+        @livewireScripts
+    </body>
 
 </html>
