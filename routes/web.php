@@ -1,5 +1,4 @@
 <?php
-
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Livewire\User\Profile;
@@ -21,16 +20,26 @@ Route::middleware(['auth'])->group(function () {
     // Profile - All roles
     Route::get('/user/profile', Profile::class)->name('user.profile');
 
-    // Staff Level - All authenticated users
-    Route::prefix('attendance')->name('attendance.')->group(function () {
-        Route::get('/', App\Livewire\Staff\Attendance\Index::class)->name('index');
-        Route::get('/check-in', App\Livewire\Staff\Attendance\CheckIn::class)->name('check-in');
+    // Check-in only - All authenticated users (untuk mobile/kiosk access)
+    Route::get('/attendance/check-in', App\Livewire\Staff\Attendance\CheckIn::class)->name('attendance.check-in');
+
+    // Staff Level - Staff role only
+    Route::middleware(['role:staff'])->group(function () {
+        Route::prefix('attendance')->name('attendance.')->group(function () {
+            Route::get('/', App\Livewire\Staff\Attendance\Index::class)->name('index');
+        });
+
+        Route::prefix('leave-requests')->name('leave-requests.')->group(function () {
+            Route::get('/', App\Livewire\Staff\LeaveRequest\Index::class)->name('index');
+            Route::get('/create', App\Livewire\Staff\LeaveRequest\Create::class)->name('create');
+            Route::get('/{leaveRequest}/print', [PrintController::class, 'leaveRequest'])->name('print');
+        });
     });
 
-    Route::prefix('leave-requests')->name('leave-requests.')->group(function () {
-        Route::get('/', App\Livewire\Staff\LeaveRequest\Index::class)->name('index');
-        Route::get('/create', App\Livewire\Staff\LeaveRequest\Create::class)->name('create');
-        Route::get('/{leaveRequest}/print', [PrintController::class, 'leaveRequest'])->name('print');
+    // Manager Level and above
+    Route::middleware(['role:manager,hr,director,admin'])->prefix('manager')->name('manager.')->group(function () {
+        Route::get('/team-attendance', App\Livewire\Manager\TeamAttendance\Index::class)->name('team-attendance');
+        // Route::get('/approve-leaves', App\Livewire\Manager\LeaveApproval\Index::class)->name('approve-leaves');
     });
 
     // HR Level and above
@@ -44,12 +53,6 @@ Route::middleware(['auth'])->group(function () {
         //     Route::get('/reports', App\Livewire\HR\Reports\Index::class)->name('reports.index');
         // });
     });
-
-    // Manager Level and above (for future use)
-    // Route::middleware(['role:manager,hr,director,admin'])->prefix('manager')->name('manager.')->group(function () {
-    //     Route::get('/team-attendance', App\Livewire\Manager\TeamAttendance::class)->name('team-attendance');
-    //     Route::get('/approve-leaves', App\Livewire\Manager\ApproveLeaves::class)->name('approve-leaves');
-    // });
 
     // Director Level and above (for future use)
     // Route::middleware(['role:director,admin'])->prefix('director')->name('director.')->group(function () {

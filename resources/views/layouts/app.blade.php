@@ -60,15 +60,19 @@
                     {{-- Dashboard - All roles --}}
                     <x-side-bar.item text="Dashboard" icon="home" :route="route('dashboard')" wire:navigate />
 
-                    {{-- Staff Level - All roles can access --}}
-                    <x-side-bar.item text="My Attendance" icon="clock" :route="route('attendance.index')" wire:navigate />
+                    {{-- Staff Level - Staff only --}}
+                    @if (auth()->user()->role === 'staff')
+                        <x-side-bar.item text="My Attendance" icon="clock" :route="route('attendance.index')" wire:navigate />
+                        <x-side-bar.item text="My Leaves" icon="calendar-days" :route="route('leave-requests.index')" wire:navigate />
+                    @endif
+
+                    {{-- Check In/Out - All roles --}}
                     <x-side-bar.item text="Check In/Out" icon="cursor-arrow-rays" :route="route('attendance.check-in')" wire:navigate />
-                    <x-side-bar.item text="My Leaves" icon="calendar-days" :route="route('leave-requests.index')" wire:navigate />
 
                     {{-- Manager Level --}}
                     @if (in_array(auth()->user()->role, ['manager', 'hr', 'director', 'admin']))
                         <x-side-bar.separator text="Management" />
-                        {{-- <x-side-bar.item text="Team Attendance" icon="users" :route="route('manager.team-attendance')" wire:navigate /> --}}
+                        <x-side-bar.item text="Team Attendance" icon="users" :route="route('manager.team-attendance')" wire:navigate />
                         {{-- <x-side-bar.item text="Approve Leaves" icon="check-circle" :route="route('manager.approve-leaves')" wire:navigate /> --}}
                     @endif
 
