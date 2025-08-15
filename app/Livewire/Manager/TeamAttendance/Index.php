@@ -20,7 +20,7 @@ class Index extends Component
     public ?string $search = null;
     public ?string $status = null;
     public ?string $member = null;
-    public ?string $date = null;
+    public $dateRange = [];
     public ?string $month = null;
 
     public array $sort = [
@@ -53,11 +53,6 @@ class Index extends Component
     public function rows(): LengthAwarePaginator
     {
         return Attendance::query()
-            ->whereHas(
-                'user',
-                fn(Builder $query) =>
-                $query->where('department_id', Auth::user()->department_id)
-            )
             ->with(['user', 'checkInOffice', 'checkOutOffice'])
             ->when(
                 $this->search,
@@ -73,13 +68,15 @@ class Index extends Component
                 fn(Builder $query) =>
                 $query->where('user_id', $this->member)
             )
+            ->when($this->dateRange, function (Builder $query) {
+                if (count($this->dateRange) === 2) {
+                    $query->whereBetween('date', $this->dateRange);
+                } elseif (count($this->dateRange) === 1) {
+                    $query->whereDate('date', $this->dateRange[0]);
+                }
+            })
             ->when(
-                $this->date,
-                fn(Builder $query) =>
-                $query->whereDate('date', $this->date)
-            )
-            ->when(
-                !$this->date && $this->month,
+                !$this->dateRange && $this->month,
                 fn(Builder $query) =>
                 $query->whereYear('date', substr($this->month, 0, 4))
                     ->whereMonth('date', substr($this->month, 5, 2))
@@ -97,29 +94,20 @@ class Index extends Component
     #[Computed]
     public function teamMembers(): \Illuminate\Database\Eloquent\Collection
     {
-        return User::where('department_id', Auth::user()->department_id)
-            ->where('id', '!=', Auth::id())
-            ->orderBy('name')
-            ->get();
+        return User::orderBy('name')->get();
     }
 
     #[Computed]
     public function monthlyStats(): array
     {
-        $departmentId = Auth::user()->department_id;
         $year = substr($this->month, 0, 4);
         $monthNum = substr($this->month, 5, 2);
 
-        $attendances = Attendance::whereHas(
-            'user',
-            fn(Builder $query) =>
-            $query->where('department_id', $departmentId)
-        )
-            ->whereYear('date', $year)
+        $attendances = Attendance::whereYear('date', $year)
             ->whereMonth('date', $monthNum)
             ->get();
 
-        $totalMembers = $this->teamMembers->count();
+        $totalMembers = User::count();
         $workingDaysInMonth = $this->getWorkingDaysInMonth($year, $monthNum);
 
         return [
@@ -141,22 +129,19 @@ class Index extends Component
     #[Computed]
     public function teamPerformance(): array
     {
-        $departmentId = Auth::user()->department_id;
         $year = substr($this->month, 0, 4);
         $monthNum = substr($this->month, 5, 2);
 
-        return User::where('department_id', $departmentId)
-            ->where('id', '!=', Auth::id())
-            ->withCount([
-                'attendances as total_days' => fn(Builder $query) =>
-                    $query->whereYear('date', $year)->whereMonth('date', $monthNum),
-                'attendances as present_days' => fn(Builder $query) =>
-                    $query->whereYear('date', $year)->whereMonth('date', $monthNum)
-                        ->where('status', 'present'),
-                'attendances as late_days' => fn(Builder $query) =>
-                    $query->whereYear('date', $year)->whereMonth('date', $monthNum)
-                        ->where('status', 'late'),
-            ])
+        return User::withCount([
+            'attendances as total_days' => fn(Builder $query) =>
+                $query->whereYear('date', $year)->whereMonth('date', $monthNum),
+            'attendances as present_days' => fn(Builder $query) =>
+                $query->whereYear('date', $year)->whereMonth('date', $monthNum)
+                    ->where('status', 'present'),
+            'attendances as late_days' => fn(Builder $query) =>
+                $query->whereYear('date', $year)->whereMonth('date', $monthNum)
+                    ->where('status', 'late'),
+        ])
             ->withSum([
                 'attendances as total_hours' => fn(Builder $query) =>
                     $query->whereYear('date', $year)->whereMonth('date', $monthNum)
