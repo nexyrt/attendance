@@ -5,6 +5,8 @@ namespace App\Livewire\Staff\Attendance;
 use App\Livewire\Traits\Alert;
 use App\Models\Attendance;
 use App\Models\OfficeLocation;
+use App\Models\Schedule;
+use App\Models\ScheduleException;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
@@ -38,6 +40,90 @@ class CheckIn extends Component
         return OfficeLocation::all();
     }
 
+    #[Computed]
+    public function todaySchedule(): ?array
+    {
+        $user = Auth::user();
+        $today = today();
+        $dayOfWeek = strtolower($today->format('l'));
+
+        // Check for schedule exceptions first
+        $exception = ScheduleException::where('date', $today)
+            ->whereHas('departments', function($query) use ($user) {
+                $query->where('department_id', $user->department_id);
+            })
+            ->first();
+
+        if ($exception) {
+            return [
+                'status' => $exception->status,
+                'start_time' => $exception->start_time?->format('H:i'),
+                'end_time' => $exception->end_time?->format('H:i'),
+                'late_tolerance' => $exception->late_tolerance ?? 30,
+                'title' => $exception->title ?? ucfirst($exception->status)
+            ];
+        }
+
+        // Check regular schedule
+        $schedule = Schedule::where('day_of_week', $dayOfWeek)->first();
+        
+        if (!$schedule) {
+            return null;
+        }
+
+        return [
+            'status' => 'regular',
+            'start_time' => $schedule->start_time->format('H:i'),
+            'end_time' => $schedule->end_time->format('H:i'),
+            'late_tolerance' => $schedule->late_tolerance,
+            'title' => 'Work Day'
+        ];
+    }
+
+    #[Computed]
+    public function canCheckIn(): bool
+    {
+        $schedule = $this->todaySchedule;
+        
+        // No schedule or holiday
+        if (!$schedule || $schedule['status'] === 'holiday') {
+            return false;
+        }
+        
+        // Already checked in
+        if ($this->todayAttendance?->check_in) {
+            return false;
+        }
+        
+        // Check time window
+        $now = now();
+        $workStart = today()->setTimeFromTimeString($schedule['start_time']);
+        $workEnd = today()->setTimeFromTimeString($schedule['end_time']);
+        
+        if (!$now->between($workStart, $workEnd)) {
+            return false;
+        }
+        
+        // Check location
+        if (!$this->latitude || !$this->longitude) {
+            return false;
+        }
+        
+        // Check if in office radius
+        return $this->findValidOffice() !== null;
+    }
+
+    #[Computed]
+    public function canCheckOut(): bool
+    {
+        $attendance = $this->todayAttendance;
+        
+        return $attendance?->check_in && 
+               !$attendance->check_out && 
+               $this->latitude && 
+               $this->longitude;
+    }
+
     public function updateLocation(float $lat, float $lng): void
     {
         $this->latitude = $lat;
@@ -46,7 +132,7 @@ class CheckIn extends Component
         $this->locationError = null;
     }
 
-    public function locationError(string $error): void
+    public function setLocationError(string $error): void
     {
         $this->locationError = $error;
         $this->locationLoading = false;
@@ -54,31 +140,20 @@ class CheckIn extends Component
 
     public function checkIn(): void
     {
-        if (!$this->latitude || !$this->longitude) {
-            $this->error('Location is required for check-in');
+        if (!$this->canCheckIn) {
+            $this->error('Cannot check in at this time');
             return;
         }
 
         $validOffice = $this->findValidOffice();
         
-        if (!$validOffice) {
-            $this->error('You are not within any office location radius');
-            return;
-        }
+        $attendance = $this->todayAttendance ?: new Attendance([
+            'user_id' => Auth::id(),
+            'date' => today(),
+        ]);
 
-        $attendance = $this->todayAttendance;
-        
-        if ($attendance?->check_in) {
-            $this->error('You have already checked in today');
-            return;
-        }
-
-        if (!$attendance) {
-            $attendance = new Attendance([
-                'user_id' => Auth::id(),
-                'date' => today(),
-            ]);
-        }
+        $status = $this->calculateStatus();
+        $lateHours = $this->calculateLateHours();
 
         $attendance->fill([
             'check_in' => now(),
@@ -86,48 +161,40 @@ class CheckIn extends Component
             'check_in_longitude' => $this->longitude,
             'check_in_office_id' => $validOffice->id,
             'device_type' => 'web',
-            'status' => $this->calculateStatus(),
+            'status' => $status,
+            'late_hours' => $lateHours,
         ]);
 
         $attendance->save();
 
-        $this->success('Check-in successful!');
-        $this->dispatch('attendance-updated');
+        $message = $status === 'late' 
+            ? "Check-in successful, but you are late"
+            : 'Check-in successful!';
+
+        $this->success($message);
     }
 
     public function checkOut(): void
     {
-        if (!$this->latitude || !$this->longitude) {
-            $this->error('Location is required for check-out');
+        if (!$this->canCheckOut) {
+            $this->error('Cannot check out at this time');
             return;
         }
 
         $attendance = $this->todayAttendance;
-
-        if (!$attendance?->check_in) {
-            $this->error('You must check in first');
-            return;
-        }
-
-        if ($attendance->check_out) {
-            $this->error('You have already checked out today');
-            return;
-        }
-
         $validOffice = $this->findValidOffice();
+        $workingHours = $this->calculateWorkingHours($attendance);
 
         $attendance->fill([
             'check_out' => now(),
             'check_out_latitude' => $this->latitude,
             'check_out_longitude' => $this->longitude,
             'check_out_office_id' => $validOffice?->id,
-            'working_hours' => $this->calculateWorkingHours($attendance),
+            'working_hours' => $workingHours,
         ]);
 
         $attendance->save();
-
-        $this->success('Check-out successful!');
-        $this->dispatch('attendance-updated');
+        $this->success("Check-out successful! Working hours: {$workingHours}h");
     }
 
     private function findValidOffice(): ?OfficeLocation
@@ -150,8 +217,7 @@ class CheckIn extends Component
 
     private function calculateDistance(float $lat1, float $lng1, float $lat2, float $lng2): float
     {
-        $earthRadius = 6371000; // meters
-
+        $earthRadius = 6371000;
         $dLat = deg2rad($lat2 - $lat1);
         $dLng = deg2rad($lng2 - $lng1);
 
@@ -160,22 +226,37 @@ class CheckIn extends Component
              sin($dLng/2) * sin($dLng/2);
 
         $c = 2 * atan2(sqrt($a), sqrt(1-$a));
-
         return $earthRadius * $c;
     }
 
     private function calculateStatus(): string
     {
-        // Simplified: check if late based on 9:00 AM
-        $scheduledTime = today()->setTime(9, 0);
-        return now()->isAfter($scheduledTime) ? 'late' : 'present';
+        $schedule = $this->todaySchedule;
+        if (!$schedule) return 'present';
+
+        $workStart = today()->setTimeFromTimeString($schedule['start_time']);
+        $lateThreshold = $workStart->copy()->addMinutes($schedule['late_tolerance']);
+
+        return now()->isAfter($lateThreshold) ? 'late' : 'present';
+    }
+
+    private function calculateLateHours(): ?float
+    {
+        $schedule = $this->todaySchedule;
+        if (!$schedule) return null;
+
+        $workStart = today()->setTimeFromTimeString($schedule['start_time']);
+        $checkInTime = now();
+
+        if ($checkInTime->isAfter($workStart)) {
+            return round($checkInTime->diffInMinutes($workStart) / 60, 2);
+        }
+
+        return 0;
     }
 
     private function calculateWorkingHours(Attendance $attendance): float
     {
-        $checkIn = $attendance->check_in;
-        $checkOut = now();
-
-        return $checkOut->diffInMinutes($checkIn) / 60;
+        return round($attendance->check_in->diffInMinutes(now()) / 60, 2);
     }
 }

@@ -11,6 +11,8 @@
         <link rel="icon" type="image/png" href="{{ asset('/assets/images/jkb.png') }}">
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+            integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 
         <tallstackui:script />
         @livewireStyles
@@ -77,7 +79,7 @@
                     @endif
 
                     {{-- HR Level --}}
-                    @if (in_array(auth()->user()->role, ['hr', 'director', 'admin']))
+                    @if (in_array(auth()->user()->role, ['manager', 'director', 'admin']))
                         <x-side-bar.separator text="HR Management" />
                         <x-side-bar.item text="Users" icon="user-group" :route="route('users.index')" wire:navigate />
                         {{-- <x-side-bar.item text="Schedules" icon="calendar" :route="route('hr.schedules.index')" wire:navigate /> --}}
@@ -86,10 +88,10 @@
                     @endif
 
                     {{-- Director Level --}}
-                    @if (in_array(auth()->user()->role, ['director', 'admin']))
+                    @if (in_array(auth()->user()->role, ['director', 'admin', 'manager']))
                         <x-side-bar.separator text="Strategic" />
+                        <x-side-bar.item text="Office Management" icon="map-pin" :route="route('office-management.index')" />
                         {{-- <x-side-bar.item text="Departments" icon="building-office" :route="route('director.departments.index')" wire:navigate /> --}}
-                        {{-- <x-side-bar.item text="Office Locations" icon="map-pin" :route="route('director.office-locations.index')" wire:navigate /> --}}
                     @endif
 
                 </x-side-bar>
@@ -97,6 +99,9 @@
             {{ $slot }}
         </x-layout>
         @livewireScripts
+        @stack('scripts')
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     </body>
 
 </html>

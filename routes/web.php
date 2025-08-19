@@ -1,4 +1,5 @@
 <?php
+
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Livewire\User\Profile;
@@ -14,16 +15,17 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth'])->group(function () {
-    // Dashboard - All roles
+
+    // ==================================================
+    // GLOBAL ROUTES - All authenticated users
+    // ==================================================
     Route::get('/dashboard', StaffDashboard::class)->name('dashboard');
-
-    // Profile - All roles
     Route::get('/user/profile', Profile::class)->name('user.profile');
-
-    // Check-in only - All authenticated users (untuk mobile/kiosk access)
     Route::get('/attendance/check-in', App\Livewire\Staff\Attendance\CheckIn::class)->name('attendance.check-in');
 
-    // Staff Level - Staff role only
+    // ==================================================
+    // STAFF LEVEL - Staff role only
+    // ==================================================
     Route::middleware(['role:staff'])->group(function () {
         Route::prefix('attendance')->name('attendance.')->group(function () {
             Route::get('/', App\Livewire\Staff\Attendance\Index::class)->name('index');
@@ -36,15 +38,28 @@ Route::middleware(['auth'])->group(function () {
         });
     });
 
-    // Manager Level and above
-    Route::middleware(['role:manager,hr,director,admin'])->prefix('manager')->name('manager.')->group(function () {
-        Route::get('/team-attendance', App\Livewire\Manager\TeamAttendance\Index::class)->name('team-attendance');
-        // Route::get('/approve-leaves', App\Livewire\Manager\LeaveApproval\Index::class)->name('approve-leaves');
+    // ==================================================
+    // MANAGER LEVEL - Manager, Admin, Director
+    // ==================================================
+    Route::middleware(['role:manager,admin,director'])->group(function () {
+        Route::prefix('manager')->name('manager.')->group(function () {
+            Route::get('/team-attendance', App\Livewire\Manager\TeamAttendance\Index::class)->name('team-attendance');
+            // Route::get('/approve-leaves', App\Livewire\Manager\LeaveApproval\Index::class)->name('approve-leaves');
+        });
     });
 
-    // HR Level and above
-    Route::middleware(['role:hr,director,admin'])->group(function () {
+    // ==================================================
+    // ADMIN LEVEL (HR) - Admin, Director
+    // ==================================================
+    Route::middleware(['role:admin,director,manager'])->group(function () {
+        // User Management
         Route::get('/users', Index::class)->name('users.index');
+
+        // Office Management
+        Route::prefix('office-management')->name('office-management.')->group(function () {
+            Route::get('/', App\Livewire\OfficeManagement\Index::class)->name('index');
+            // Route::get('/create', App\Livewire\OfficeManagement\Create::class)->name('create');
+        });
 
         // Future HR routes
         // Route::prefix('hr')->name('hr.')->group(function () {
@@ -54,10 +69,14 @@ Route::middleware(['auth'])->group(function () {
         // });
     });
 
-    // Director Level and above (for future use)
-    // Route::middleware(['role:director,admin'])->prefix('director')->name('director.')->group(function () {
-    //     Route::get('/departments', App\Livewire\Director\Departments\Index::class)->name('departments.index');
-    //     Route::get('/office-locations', App\Livewire\Director\OfficeLocations\Index::class)->name('office-locations.index');
+    // ==================================================
+    // DIRECTOR LEVEL - Director only (for future use)
+    // ==================================================
+    // Route::middleware(['role:director'])->group(function () {
+    //     Route::prefix('director')->name('director.')->group(function () {
+    //         Route::get('/departments', App\Livewire\Director\Departments\Index::class)->name('departments.index');
+    //         Route::get('/strategic-reports', App\Livewire\Director\Reports\Index::class)->name('strategic-reports.index');
+    //     });
     // });
 });
 
