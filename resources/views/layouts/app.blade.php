@@ -43,7 +43,7 @@
                             </x-slot:action>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
-                                <x-dropdown.items :text="__('Profile')" :href="route('user.profile')" wire:navigate />
+                                <x-dropdown.items :text="__('Profile')" :href="route('user.profile')"  />
                                 <x-dropdown.items :text="__('Logout')"
                                     onclick="event.preventDefault(); this.closest('form').submit();" separator />
                             </form>
@@ -60,38 +60,38 @@
                     </x-slot:brand>
 
                     {{-- Dashboard - All roles --}}
-                    <x-side-bar.item text="Dashboard" icon="home" :route="route('dashboard')" wire:navigate />
+                    <x-side-bar.item text="Dashboard" icon="home" :route="route('dashboard')"  />
 
                     {{-- Staff Level - Staff only --}}
                     @if (auth()->user()->role === 'staff')
-                        <x-side-bar.item text="My Attendance" icon="clock" :route="route('attendance.index')" wire:navigate />
-                        <x-side-bar.item text="My Leaves" icon="calendar-days" :route="route('leave-requests.index')" wire:navigate />
+                        <x-side-bar.item text="My Attendance" icon="clock" :route="route('attendance.index')"  />
+                        <x-side-bar.item text="My Leaves" icon="calendar-days" :route="route('leave-requests.index')"  />
                     @endif
 
                     {{-- Check In/Out - All roles --}}
-                    <x-side-bar.item text="Check In/Out" icon="cursor-arrow-rays" :route="route('attendance.check-in')" wire:navigate />
+                    <x-side-bar.item text="Check In/Out" icon="cursor-arrow-rays" :route="route('attendance.check-in')"  />
 
                     {{-- Manager Level --}}
                     @if (in_array(auth()->user()->role, ['manager', 'hr', 'director', 'admin']))
                         <x-side-bar.separator text="Management" />
-                        <x-side-bar.item text="Team Attendance" icon="users" :route="route('manager.team-attendance')" wire:navigate />
-                        {{-- <x-side-bar.item text="Approve Leaves" icon="check-circle" :route="route('manager.approve-leaves')" wire:navigate /> --}}
+                        <x-side-bar.item text="Team Attendance" icon="users" :route="route('manager.team-attendance')"  />
+                        {{-- <x-side-bar.item text="Approve Leaves" icon="check-circle" :route="route('manager.approve-leaves')"  /> --}}
                     @endif
 
                     {{-- HR Level --}}
                     @if (in_array(auth()->user()->role, ['manager', 'director', 'admin']))
                         <x-side-bar.separator text="HR Management" />
-                        <x-side-bar.item text="Users" icon="user-group" :route="route('users.index')" wire:navigate />
-                        {{-- <x-side-bar.item text="Schedules" icon="calendar" :route="route('hr.schedules.index')" wire:navigate /> --}}
-                        {{-- <x-side-bar.item text="Leave Balances" icon="scale" :route="route('hr.leave-balances.index')" wire:navigate /> --}}
-                        {{-- <x-side-bar.item text="Reports" icon="chart-bar" :route="route('hr.reports.index')" wire:navigate /> --}}
+                        <x-side-bar.item text="Users" icon="user-group" :route="route('users.index')"  />
+                        {{-- <x-side-bar.item text="Schedules" icon="calendar" :route="route('hr.schedules.index')"  /> --}}
+                        {{-- <x-side-bar.item text="Leave Balances" icon="scale" :route="route('hr.leave-balances.index')"  /> --}}
+                        {{-- <x-side-bar.item text="Reports" icon="chart-bar" :route="route('hr.reports.index')"  /> --}}
                     @endif
 
                     {{-- Director Level --}}
                     @if (in_array(auth()->user()->role, ['director', 'admin', 'manager']))
                         <x-side-bar.separator text="Strategic" />
                         <x-side-bar.item text="Office Management" icon="map-pin" :route="route('office-management.index')" />
-                        {{-- <x-side-bar.item text="Departments" icon="building-office" :route="route('director.departments.index')" wire:navigate /> --}}
+                        {{-- <x-side-bar.item text="Departments" icon="building-office" :route="route('director.departments.index')"  /> --}}
                     @endif
 
                 </x-side-bar>
