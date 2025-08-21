@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Livewire\Staff\Attendance;
+namespace App\Livewire\Attendance;
 
 use App\Livewire\Traits\Alert;
 use App\Models\Attendance;
@@ -23,7 +23,7 @@ class CheckIn extends Component
 
     public function render(): View
     {
-        return view('livewire.staff.attendance.check-in');
+        return view('livewire.attendance.check-in');
     }
 
     #[Computed]

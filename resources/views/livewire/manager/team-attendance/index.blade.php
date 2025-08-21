@@ -1,227 +1,219 @@
-<div>
-    {{-- Header Section --}}
-    <div class="mb-6">
+<div class="space-y-6">
+    {{-- Page Header --}}
+    <div>
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Team Attendance</h1>
-        <p class="text-gray-600 dark:text-gray-400">Monitor your team's attendance and performance</p>
+        <p class="text-gray-600 dark:text-gray-400">Monitor your team's daily attendance</p>
     </div>
 
-    {{-- Monthly Stats Cards --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-            <div class="flex items-center">
-                <div class="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                    <x-icon name="users" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm text-gray-600 dark:text-gray-400">Total Attendances</p>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                        {{ $this->monthlyStats['total_attendances'] }}</p>
-                </div>
-            </div>
+    {{-- Date Range & Filter Controls --}}
+    <x-card>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <x-date label="Date Range" wire:model.blur="dateRange" range format="YYYY-MM-DD" />
+            <x-input label="Search Staff" wire:model.live.debounce.500ms="search" placeholder="Search by name or email..."
+                icon="magnifying-glass" />
+            <x-select.styled label="Filter by Status" wire:model.live="statusFilter" placeholder="All Status"
+                :options="[
+                    ['label' => 'Present', 'value' => 'present'],
+                    ['label' => 'Late', 'value' => 'late'],
+                    ['label' => 'Early Leave', 'value' => 'early_leave'],
+                    ['label' => 'Holiday', 'value' => 'holiday'],
+                    ['label' => 'Pending Present', 'value' => 'pending present'],
+                ]" />
         </div>
+    </x-card>
 
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    {{-- Quick Stats --}}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <x-card>
             <div class="flex items-center">
-                <div class="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
-                    <x-icon name="check-circle" class="w-6 h-6 text-green-600 dark:text-green-400" />
+                <div class="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                    <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
                 </div>
                 <div class="ml-4">
-                    <p class="text-sm text-gray-600 dark:text-gray-400">Attendance Rate</p>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                        {{ $this->monthlyStats['attendance_rate'] }}%</p>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Staff</p>
+                    <p class="text-2xl font-bold text-gray-900 dark:text-white">{{ $attendanceStats['total_staff'] }}
+                    </p>
                 </div>
             </div>
-        </div>
+        </x-card>
 
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <x-card>
             <div class="flex items-center">
-                <div class="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
-                    <x-icon name="clock" class="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+                <div class="p-3 bg-green-100 dark:bg-green-900 rounded-lg">
+                    <svg class="w-6 h-6 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
+                    </svg>
                 </div>
                 <div class="ml-4">
-                    <p class="text-sm text-gray-600 dark:text-gray-400">Punctuality Rate</p>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                        {{ $this->monthlyStats['punctuality_rate'] }}%</p>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Present</p>
+                    <p class="text-2xl font-bold text-green-600 dark:text-green-400">{{ $attendanceStats['present'] }}
+                    </p>
                 </div>
             </div>
-        </div>
+        </x-card>
 
-        <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+        <x-card>
             <div class="flex items-center">
-                <div class="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                    <x-icon name="clock" class="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                <div class="p-3 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+                    <svg class="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" />
+                    </svg>
                 </div>
                 <div class="ml-4">
-                    <p class="text-sm text-gray-600 dark:text-gray-400">Total Hours</p>
-                    <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                        {{ $this->monthlyStats['total_working_hours'] }}</p>
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Late</p>
+                    <p class="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{{ $attendanceStats['late'] }}
+                    </p>
                 </div>
             </div>
-        </div>
+        </x-card>
+
+        <x-card>
+            <div class="flex items-center">
+                <div class="p-3 bg-red-100 dark:bg-red-900 rounded-lg">
+                    <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" />
+                    </svg>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Absent</p>
+                    <p class="text-2xl font-bold text-red-600 dark:text-red-400">{{ $attendanceStats['absent'] }}</p>
+                </div>
+            </div>
+        </x-card>
     </div>
 
-    {{-- Team Performance Overview --}}
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6 p-6">
-        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Team Performance Overview</h3>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {{-- Performance Table --}}
-            <div>
-                <h4 class="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">Individual Performance</h4>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                        <thead class="bg-gray-50 dark:bg-gray-700">
-                            <tr>
-                                <th
-                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                                    Member</th>
-                                <th
-                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                                    Rate</th>
-                                <th
-                                    class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                                    Hours</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                            @foreach ($this->teamPerformance as $performance)
-                                <tr>
-                                    <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">
-                                        {{ $performance['user']->name }}</td>
-                                    <td class="px-4 py-2">
-                                        <span
-                                            class="inline-flex px-2 py-1 text-xs font-semibold rounded-full
-                                        @if ($performance['attendance_rate'] >= 90) bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200
-                                        @elseif($performance['attendance_rate'] >= 80) bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200
-                                        @else bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 @endif">
-                                            {{ $performance['attendance_rate'] }}%
-                                        </span>
-                                    </td>
-                                    <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">
-                                        {{ $performance['total_hours'] }}</td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {{-- Quick Actions --}}
-            <div>
-                <h4 class="text-md font-medium text-gray-700 dark:text-gray-300 mb-3">Quick Actions</h4>
-                <div class="space-y-3">
-                    <livewire:manager.team-attendance.analytics />
-                    <livewire:manager.team-attendance.export />
-                </div>
-            </div>
-        </div>
+    {{-- Action Buttons --}}
+    <div class="flex gap-3">
+        <x-button color="blue" icon="chart-bar" href="{{ route('manager.team-attendance.analytics') }}">
+            Analytics
+        </x-button>
+        <x-button color="green" icon="document-arrow-down" disabled>
+            Export Report
+            <x-slot:right>
+                <x-badge text="Soon" color="yellow" light xs />
+            </x-slot:right>
+        </x-button>
     </div>
 
     {{-- Attendance Table --}}
-    <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div class="p-6 border-b border-gray-200 dark:border-gray-700">
-            <div class="flex justify-between items-center">
-                <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Attendance Records</h3>
-                <div class="flex gap-2">
-                    <x-button.circle icon="chart-bar" wire:click="$dispatch('show-analytics')" />
-                    <x-button.circle icon="arrow-down-tray" wire:click="$dispatch('show-export')" />
+    <x-table :$headers :$sort :rows="$this->rows" :quantity="[5, 10, 15, 20]" filter paginate loading>
+        @interact('column_name', $row)
+            <div class="flex items-center">
+                @if ($row->image)
+                    <img src="{{ Storage::url($row->image) }}" alt="{{ $row->name }}" class="w-8 h-8 rounded-full mr-3">
+                @else
+                    <div class="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full flex items-center justify-center mr-3">
+                        <span class="text-xs font-medium text-gray-600 dark:text-gray-300">
+                            {{ substr($row->name, 0, 2) }}
+                        </span>
+                    </div>
+                @endif
+                <div>
+                    <p class="font-medium text-gray-900 dark:text-white">{{ $row->name }}</p>
                 </div>
             </div>
-        </div>
+        @endinteract
 
-        <x-table :headers="$headers" :rows="$this->rows" :sort="$sort" paginate filter loading>
-            {{-- Custom filters --}}
-            <x-slot:header>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                    <x-select.styled label="Team Member" :options="$this->getMemberOptions()" wire:model.live="member" />
+        @interact('column_email', $row)
+            <span class="text-sm text-gray-600 dark:text-gray-400">{{ $row->email }}</span>
+        @endinteract
 
-                    <x-date label="Date Range" wire:model.live="dateRange" range format="YYYY-MM-DD" />
-
-                    <x-input type="month" label="Month" wire:model.live="month" />
-
-                    <x-select.styled label="Status" :options="$this->getStatusOptions()" wire:model.live="status" />
+        @interact('column_latest_date', $row)
+            @php
+                $latestAttendance = $row->attendances->first();
+            @endphp
+            @if ($latestAttendance)
+                <div class="text-center">
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">
+                        {{ $latestAttendance->date->format('M d') }}
+                    </span>
+                    <p class="text-xs text-gray-400">{{ $latestAttendance->date->format('Y') }}</p>
                 </div>
-            </x-slot:header>
-
-            {{-- Table interactions --}}
-            @interact('column_user', $row)
-                <div class="flex items-center">
-                    @if ($row->user && $row->user->image && \Storage::disk('public')->exists($row->user->image))
-                        <img class="w-8 h-8 rounded-full mr-3" src="{{ Storage::url($row->user->image) }}"
-                            alt="{{ $row->user->name }}">
-                    @else
-                        <div
-                            class="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded-full mr-3 flex items-center justify-center">
-                            <span
-                                class="text-xs font-medium text-gray-700 dark:text-gray-200">{{ $row->user ? substr($row->user->name, 0, 2) : 'N/A' }}</span>
-                        </div>
-                    @endif
-                    <div>
-                        <div class="text-sm font-medium text-gray-900 dark:text-white">{{ $row->user->name ?? 'Unknown' }}
-                        </div>
-                        <div class="text-sm text-gray-500 dark:text-gray-400">{{ $row->user->email ?? 'No email' }}</div>
-                    </div>
+            @else
+                <div class="text-center">
+                    <span class="text-sm text-gray-400">-</span>
                 </div>
-            @endinteract
+            @endif
+        @endinteract
 
-            @interact('column_date', $row)
-                <div class="text-sm text-gray-900 dark:text-white">
-                    {{ $row->date->format('M d, Y') }}
-                    <div class="text-xs text-gray-500 dark:text-gray-400">{{ $row->date->format('l') }}</div>
+        @interact('column_check_in', $row)
+            @php
+                $latestAttendance = $row->attendances->first();
+            @endphp
+            @if ($latestAttendance && $latestAttendance->check_in)
+                <div class="text-center">
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">
+                        {{ $latestAttendance->check_in->format('H:i') }}
+                    </span>
                 </div>
-            @endinteract
-
-            @interact('column_check_in', $row)
-                @if ($row->check_in)
-                    <span class="text-sm text-gray-900 dark:text-white">{{ $row->check_in->format('H:i') }}</span>
-                @else
-                    <span class="text-xs text-gray-400">-</span>
-                @endif
-            @endinteract
-
-            @interact('column_check_out', $row)
-                @if ($row->check_out)
-                    <span class="text-sm text-gray-900 dark:text-white">{{ $row->check_out->format('H:i') }}</span>
-                @else
-                    <span class="text-xs text-gray-400">-</span>
-                @endif
-            @endinteract
-
-            @interact('column_working_hours', $row)
-                @if ($row->working_hours)
-                    <span class="text-sm text-gray-900 dark:text-white">{{ number_format($row->working_hours, 2) }}h</span>
-                @else
-                    <span class="text-xs text-gray-400">-</span>
-                @endif
-            @endinteract
-
-            @interact('column_late_hours', $row)
-                @if ($row->late_hours)
-                    <span class="text-sm text-red-600 dark:text-red-400">{{ number_format($row->late_hours, 2) }}h</span>
-                @else
-                    <span class="text-xs text-gray-400">-</span>
-                @endif
-            @endinteract
-
-            @interact('column_status', $row)
-                <x-badge :text="ucfirst($row->status)" :color="match ($row->status) {
-                    'present' => 'green',
-                    'late' => 'yellow',
-                    'early_leave' => 'orange',
-                    'holiday' => 'blue',
-                    default => 'gray',
-                }" />
-            @endinteract
-
-            @interact('column_office', $row)
-                <div class="text-sm">
-                    @if ($row->checkInOffice)
-                        <div class="text-gray-900 dark:text-white">{{ $row->checkInOffice->name }}</div>
-                    @endif
-                    @if ($row->checkOutOffice && $row->checkOutOffice->id !== $row->checkInOffice?->id)
-                        <div class="text-xs text-gray-500 dark:text-gray-400">Out: {{ $row->checkOutOffice->name }}</div>
-                    @endif
+            @else
+                <div class="text-center">
+                    <span class="text-sm text-gray-400">-</span>
                 </div>
-            @endinteract
-        </x-table>
-    </div>
+            @endif
+        @endinteract
+
+        @interact('column_check_out', $row)
+            @php
+                $latestAttendance = $row->attendances->first();
+            @endphp
+            @if ($latestAttendance && $latestAttendance->check_out)
+                <div class="text-center">
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">
+                        {{ $latestAttendance->check_out->format('H:i') }}
+                    </span>
+                </div>
+            @else
+                <div class="text-center">
+                    <span class="text-sm text-gray-400">-</span>
+                </div>
+            @endif
+        @endinteract
+
+        @interact('column_avg_hours', $row)
+            @php
+                $avgHours = $row->attendances->avg('working_hours');
+            @endphp
+            @if ($avgHours)
+                <div class="text-center">
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">
+                        {{ number_format($avgHours, 1) }}h
+                    </span>
+                </div>
+            @else
+                <div class="text-center">
+                    <span class="text-sm text-gray-400">-</span>
+                </div>
+            @endif
+        @endinteract
+
+        @interact('column_status', $row)
+            @php
+                $latestAttendance = $row->attendances->first();
+                $status = $latestAttendance ? $latestAttendance->status : 'absent';
+                $badgeColor = $this->getStatusBadgeColor($status);
+            @endphp
+            <div class="flex justify-center">
+                <x-badge :text="ucfirst(str_replace('_', ' ', $status))" :color="$badgeColor" light />
+            </div>
+        @endinteract
+
+        @interact('column_notes', $row)
+            @php
+                $latestAttendance = $row->attendances->first();
+            @endphp
+            @if ($latestAttendance && $latestAttendance->notes)
+                <span class="text-sm text-gray-600 dark:text-gray-400">
+                    {{ Str::limit($latestAttendance->notes, 30) }}
+                </span>
+            @else
+                <span class="text-sm text-gray-400">-</span>
+            @endif
+        @endinteract
+    </x-table>
 </div>

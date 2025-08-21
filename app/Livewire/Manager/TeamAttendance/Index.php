@@ -2,199 +2,187 @@
 
 namespace App\Livewire\Manager\TeamAttendance;
 
-use App\Models\Attendance;
 use App\Models\User;
-use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Auth;
-use Livewire\Attributes\Computed;
+use App\Models\Attendance;
+use Carbon\Carbon;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\Computed;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class Index extends Component
 {
     use WithPagination;
 
     public ?int $quantity = 10;
-    public ?string $search = null;
-    public ?string $status = null;
-    public ?string $member = null;
     public $dateRange = [];
-    public ?string $month = null;
+    public ?string $search = null;
+    public ?string $statusFilter = null;
 
     public array $sort = [
-        'column' => 'date',
-        'direction' => 'desc',
+        'column' => 'name',
+        'direction' => 'asc',
     ];
 
     public array $headers = [
-        ['index' => 'user', 'label' => 'Staff Member', 'sortable' => false],
-        ['index' => 'date', 'label' => 'Date'],
+        ['index' => 'name', 'label' => 'Staff Name'],
+        ['index' => 'email', 'label' => 'Email'],
+        ['index' => 'latest_date', 'label' => 'Latest Date'],
         ['index' => 'check_in', 'label' => 'Check In'],
         ['index' => 'check_out', 'label' => 'Check Out'],
-        ['index' => 'working_hours', 'label' => 'Hours'],
-        ['index' => 'late_hours', 'label' => 'Late Hours'],
+        ['index' => 'avg_hours', 'label' => 'Avg Hours'],
         ['index' => 'status', 'label' => 'Status'],
-        ['index' => 'office', 'label' => 'Office', 'sortable' => false],
+        ['index' => 'notes', 'label' => 'Notes', 'sortable' => false],
     ];
 
-    public function mount(): void
+    public function mount()
     {
-        $this->month = now()->format('Y-m');
+        $this->dateRange = [
+            now()->startOfWeek()->format('Y-m-d'),
+            now()->endOfWeek()->format('Y-m-d')
+        ];
     }
 
-    public function render(): View
+    public function render()
     {
-        return view('livewire.manager.team-attendance.index');
+        return view('livewire.manager.team-attendance.index', [
+            'attendanceStats' => $this->getAttendanceStats(),
+        ]);
     }
 
     #[Computed]
     public function rows(): LengthAwarePaginator
     {
-        return Attendance::query()
-            ->with(['user', 'checkInOffice', 'checkOutOffice'])
-            ->when(
-                $this->search,
-                fn(Builder $query) =>
-                $query->whereHas(
-                    'user',
-                    fn(Builder $subQuery) =>
-                    $subQuery->where('name', 'like', "%{$this->search}%")
-                )
-            )
-            ->when(
-                $this->member,
-                fn(Builder $query) =>
-                $query->where('user_id', $this->member)
-            )
-            ->when($this->dateRange, function (Builder $query) {
-                if (count($this->dateRange) === 2) {
-                    $query->whereBetween('date', $this->dateRange);
-                } elseif (count($this->dateRange) === 1) {
-                    $query->whereDate('date', $this->dateRange[0]);
-                }
+        $managerDepartment = auth()->user()->department_id;
+        $startDate = $this->dateRange[0] ?? now()->startOfWeek()->format('Y-m-d');
+        $endDate = $this->dateRange[1] ?? now()->endOfWeek()->format('Y-m-d');
+
+        $query = User::with([
+            'attendances' => function ($query) use ($startDate, $endDate) {
+                $query->whereBetween('date', [$startDate, $endDate])
+                    ->orderBy('date', 'desc');
+            }
+        ])
+            ->where('department_id', $managerDepartment)
+            ->where('role', 'staff')
+            ->when($this->search, function (Builder $query) {
+                $query->where('name', 'like', '%' . $this->search . '%')
+                    ->orWhere('email', 'like', '%' . $this->search . '%');
             })
-            ->when(
-                !$this->dateRange && $this->month,
-                fn(Builder $query) =>
-                $query->whereYear('date', substr($this->month, 0, 4))
-                    ->whereMonth('date', substr($this->month, 5, 2))
-            )
-            ->when(
-                $this->status,
-                fn(Builder $query) =>
-                $query->where('status', $this->status)
-            )
-            ->orderBy(...array_values($this->sort))
-            ->paginate($this->quantity)
+            ->when($this->statusFilter, function (Builder $query) use ($startDate, $endDate) {
+                $query->whereHas('attendances', function ($attendanceQuery) use ($startDate, $endDate) {
+                    $attendanceQuery->whereBetween('date', [$startDate, $endDate])
+                        ->where('status', $this->statusFilter);
+                });
+            });
+
+        // Handle custom sorting for attendance-related columns
+        if ($this->sort['column'] === 'latest_date') {
+            $query->leftJoin('attendances', function ($join) use ($startDate, $endDate) {
+                $join->on('users.id', '=', 'attendances.user_id')
+                    ->whereBetween('attendances.date', [$startDate, $endDate]);
+            })
+                ->select('users.*')
+                ->groupBy('users.id')
+                ->orderBy(\DB::raw('MAX(attendances.date)'), $this->sort['direction']);
+        } elseif ($this->sort['column'] === 'status') {
+            $query->leftJoin('attendances', function ($join) use ($startDate, $endDate) {
+                $join->on('users.id', '=', 'attendances.user_id')
+                    ->whereBetween('attendances.date', [$startDate, $endDate]);
+            })
+                ->select('users.*')
+                ->groupBy('users.id')
+                ->orderBy(\DB::raw('MAX(attendances.status)'), $this->sort['direction']);
+        } elseif ($this->sort['column'] === 'check_in') {
+            $query->leftJoin('attendances', function ($join) use ($startDate, $endDate) {
+                $join->on('users.id', '=', 'attendances.user_id')
+                    ->whereBetween('attendances.date', [$startDate, $endDate]);
+            })
+                ->select('users.*')
+                ->groupBy('users.id')
+                ->orderBy(\DB::raw('MAX(attendances.check_in)'), $this->sort['direction']);
+        } elseif ($this->sort['column'] === 'check_out') {
+            $query->leftJoin('attendances', function ($join) use ($startDate, $endDate) {
+                $join->on('users.id', '=', 'attendances.user_id')
+                    ->whereBetween('attendances.date', [$startDate, $endDate]);
+            })
+                ->select('users.*')
+                ->groupBy('users.id')
+                ->orderBy(\DB::raw('MAX(attendances.check_out)'), $this->sort['direction']);
+        } elseif ($this->sort['column'] === 'avg_hours') {
+            $query->leftJoin('attendances', function ($join) use ($startDate, $endDate) {
+                $join->on('users.id', '=', 'attendances.user_id')
+                    ->whereBetween('attendances.date', [$startDate, $endDate]);
+            })
+                ->select('users.*')
+                ->groupBy('users.id')
+                ->orderBy(\DB::raw('AVG(attendances.working_hours)'), $this->sort['direction']);
+        } else {
+            $query->orderBy(...array_values($this->sort));
+        }
+
+        return $query->paginate($this->quantity)
             ->withQueryString();
     }
 
-    #[Computed]
-    public function teamMembers(): \Illuminate\Database\Eloquent\Collection
+    private function getAttendanceStats()
     {
-        return User::orderBy('name')->get();
-    }
+        $managerDepartment = auth()->user()->department_id;
+        $startDate = $this->dateRange[0] ?? now()->startOfWeek()->format('Y-m-d');
+        $endDate = $this->dateRange[1] ?? now()->endOfWeek()->format('Y-m-d');
 
-    #[Computed]
-    public function monthlyStats(): array
-    {
-        $year = substr($this->month, 0, 4);
-        $monthNum = substr($this->month, 5, 2);
+        $totalStaff = User::where('department_id', $managerDepartment)
+            ->where('role', 'staff')
+            ->count();
 
-        $attendances = Attendance::whereYear('date', $year)
-            ->whereMonth('date', $monthNum)
-            ->get();
-
-        $totalMembers = User::count();
-        $workingDaysInMonth = $this->getWorkingDaysInMonth($year, $monthNum);
-
-        return [
-            'total_attendances' => $attendances->count(),
-            'present_count' => $attendances->where('status', 'present')->count(),
-            'late_count' => $attendances->where('status', 'late')->count(),
-            'early_leave_count' => $attendances->where('status', 'early_leave')->count(),
-            'total_working_hours' => round($attendances->sum('working_hours'), 2),
-            'total_late_hours' => round($attendances->sum('late_hours'), 2),
-            'attendance_rate' => $totalMembers > 0 && $workingDaysInMonth > 0
-                ? round(($attendances->count() / ($totalMembers * $workingDaysInMonth)) * 100, 1)
-                : 0,
-            'punctuality_rate' => $attendances->count() > 0
-                ? round(($attendances->where('status', 'present')->count() / $attendances->count()) * 100, 1)
-                : 0,
-        ];
-    }
-
-    #[Computed]
-    public function teamPerformance(): array
-    {
-        $year = substr($this->month, 0, 4);
-        $monthNum = substr($this->month, 5, 2);
-
-        return User::withCount([
-            'attendances as total_days' => fn(Builder $query) =>
-                $query->whereYear('date', $year)->whereMonth('date', $monthNum),
-            'attendances as present_days' => fn(Builder $query) =>
-                $query->whereYear('date', $year)->whereMonth('date', $monthNum)
-                    ->where('status', 'present'),
-            'attendances as late_days' => fn(Builder $query) =>
-                $query->whereYear('date', $year)->whereMonth('date', $monthNum)
-                    ->where('status', 'late'),
-        ])
-            ->withSum([
-                'attendances as total_hours' => fn(Builder $query) =>
-                    $query->whereYear('date', $year)->whereMonth('date', $monthNum)
-            ], 'working_hours')
-            ->get()
-            ->map(function ($user) {
-                $attendanceRate = $user->total_days > 0
-                    ? round(($user->present_days / $user->total_days) * 100, 1)
-                    : 0;
-
-                return [
-                    'user' => $user,
-                    'total_days' => $user->total_days,
-                    'present_days' => $user->present_days,
-                    'late_days' => $user->late_days,
-                    'total_hours' => round($user->total_hours ?? 0, 2),
-                    'attendance_rate' => $attendanceRate,
-                ];
+        $attendanceData = Attendance::whereBetween('date', [$startDate, $endDate])
+            ->whereHas('user', function ($query) use ($managerDepartment) {
+                $query->where('department_id', $managerDepartment)
+                    ->where('role', 'staff');
             })
-            ->sortByDesc('attendance_rate')
-            ->values()
+            ->selectRaw('status, COUNT(*) as count')
+            ->groupBy('status')
+            ->pluck('count', 'status')
             ->toArray();
-    }
 
-    public function getStatusOptions(): array
-    {
+        $totalAttendanceRecords = array_sum($attendanceData);
+        $workingDays = $this->getWorkingDaysBetween($startDate, $endDate);
+        $expectedRecords = $totalStaff * $workingDays;
+
         return [
-            '' => 'All Status',
-            'present' => 'Present',
-            'late' => 'Late',
-            'early_leave' => 'Early Leave',
-            'holiday' => 'Holiday',
-            'pending present' => 'Pending Present',
+            'total_staff' => $totalStaff,
+            'present' => $attendanceData['present'] ?? 0,
+            'late' => $attendanceData['late'] ?? 0,
+            'absent' => max(0, $expectedRecords - $totalAttendanceRecords),
+            'early_leave' => $attendanceData['early_leave'] ?? 0,
         ];
     }
 
-    public function getMemberOptions(): array
+    private function getWorkingDaysBetween($startDate, $endDate)
     {
-        return $this->teamMembers->pluck('name', 'id')->prepend('All Members', '')->toArray();
-    }
-
-    private function getWorkingDaysInMonth(string $year, string $month): int
-    {
-        $startDate = \Carbon\Carbon::create((int) $year, (int) $month, 1)->startOfMonth();
-        $endDate = $startDate->copy()->endOfMonth();
-
+        $start = Carbon::parse($startDate);
+        $end = Carbon::parse($endDate);
         $workingDays = 0;
-        for ($date = $startDate->copy(); $date->lte($endDate); $date->addDay()) {
-            if ($date->isWeekday()) {
+
+        while ($start->lte($end)) {
+            if ($start->isWeekday()) {
                 $workingDays++;
             }
+            $start->addDay();
         }
 
         return $workingDays;
+    }
+
+    public function getStatusBadgeColor($status)
+    {
+        return match ($status) {
+            'present' => 'green',
+            'late' => 'yellow',
+            'early_leave' => 'orange',
+            'absent' => 'red',
+            default => 'gray'
+        };
     }
 }
