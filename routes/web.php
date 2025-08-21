@@ -61,7 +61,7 @@ Route::middleware(['auth'])->group(function () {
     // ==================================================
     // ADMIN LEVEL - Admin, Director roles
     // ==================================================
-    Route::middleware(['role:admin,director'])->group(function () {
+    Route::middleware(['role:admin,director,manager'])->group(function () {
         // User Management
         Route::get('/users', UsersIndex::class)->name('users.index');
 
