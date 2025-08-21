@@ -76,7 +76,7 @@
                     @endif
 
                     {{-- Admin+ Only --}}
-                    @if (in_array(auth()->user()->role, ['admin', 'director']))
+                    @if (in_array(auth()->user()->role, ['admin', 'director', 'manager']))
                         <x-side-bar.separator text="HR Management" />
                         <x-side-bar.item text="Users" icon="user-group" :route="route('users.index')" />
                         <x-side-bar.separator text="Strategic" />
