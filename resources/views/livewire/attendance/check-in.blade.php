@@ -1,4 +1,4 @@
-<div class="p-4 space-y-4" x-data="{
+<div class="space-y-4" x-data="{
     getLocation() {
         if (navigator.geolocation) {
             $wire.set('locationLoading', true);
