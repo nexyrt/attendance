@@ -85,7 +85,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ==================================================
-    // ADMIN LEVEL - Admin, Director roles
+    // ADMIN LEVEL - Admin, Director & Manager roles
     // ==================================================
     Route::middleware(['role:admin,director,manager'])->group(function () {
         // User Management
@@ -95,6 +95,9 @@ Route::middleware(['auth'])->group(function () {
         Route::prefix('office-management')->name('office-management.')->group(function () {
             Route::get('/', OfficeManagementIndex::class)->name('index');
         });
+
+        // Schedule Management
+        Route::get('/schedule', \App\Livewire\Schedule\Index::class)->name('schedule.index');
     });
 });
 
