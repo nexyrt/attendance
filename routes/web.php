@@ -53,8 +53,34 @@ Route::middleware(['auth'])->group(function () {
     // ==================================================
     Route::middleware(['role:manager'])->group(function () {
         Route::prefix('manager')->name('manager.')->group(function () {
+            Route::prefix('leave-requests')->name('leave-requests.')->group(function () {
+                Route::get('/', \App\Livewire\Manager\LeaveRequest\Index::class)->name('index');
+                Route::get('/{leaveRequest}/print', [PrintController::class, 'leaveRequest'])->name('print');
+            });
+
             Route::get('/team-attendance', ManagerTeamAttendance::class)->name('team-attendance');
             Route::get('/team-attendance/analytics', \App\Livewire\Manager\TeamAttendance\Analytics::class)->name('team-attendance.analytics');
+        });
+    });
+
+    // ==================================================
+    // ADMIN LEVEL - Admin roles
+    // ==================================================
+    Route::middleware(['role:admin'])->group(function () {
+        Route::prefix('admin/leave-requests')->name('admin.leave-requests.')->group(function () {
+            // Leave Request Management
+            Route::get('/', \App\Livewire\Admin\LeaveRequest\Index::class)->name('index');
+            Route::get('/{leaveRequest}/print', [PrintController::class, 'leaveRequest'])->name('print');
+        });
+    });
+
+    // ==================================================
+    // Director LEVEL - Director roles
+    // ==================================================
+    Route::middleware(['role:director'])->group(function () {
+        Route::prefix('director/leave-requests')->name('director.leave-requests.')->group(function () {
+            Route::get('/', \App\Livewire\Director\LeaveRequest\Index::class)->name('index');
+            Route::get('/{leaveRequest}/print', [PrintController::class, 'leaveRequest'])->name('print');
         });
     });
 
@@ -70,27 +96,6 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/', OfficeManagementIndex::class)->name('index');
         });
     });
-
-    // ==================================================
-    // FUTURE EXPANSIONS (Commented for reference)
-    // ==================================================
-
-    // HR Module (Admin+ roles)
-    // Route::middleware(['role:admin,director'])->group(function () {
-    //     Route::prefix('hr')->name('hr.')->group(function () {
-    //         Route::get('/schedules', App\Livewire\HR\Schedules\Index::class)->name('schedules.index');
-    //         Route::get('/leave-balances', App\Livewire\HR\LeaveBalances\Index::class)->name('leave-balances.index');
-    //         Route::get('/reports', App\Livewire\HR\Reports\Index::class)->name('reports.index');
-    //     });
-    // });
-
-    // Director Module (Director only)
-    // Route::middleware(['role:director'])->group(function () {
-    //     Route::prefix('director')->name('director.')->group(function () {
-    //         Route::get('/departments', App\Livewire\Director\Departments\Index::class)->name('departments.index');
-    //         Route::get('/strategic-reports', App\Livewire\Director\Reports\Index::class)->name('strategic-reports.index');
-    //     });
-    // });
 });
 
 require __DIR__ . '/auth.php';

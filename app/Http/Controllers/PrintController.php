@@ -3,15 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\LeaveRequest;
-use Illuminate\Contracts\View\View;
+use Illuminate\Http\Response;
 use Illuminate\Routing\Controller;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PrintController extends Controller
 {
-    public function leaveRequest(LeaveRequest $leaveRequest): View
+    public function leaveRequest(LeaveRequest $leaveRequest): Response
     {
-        $leaveRequest->load(['user', 'manager', 'hr', 'director']);
-
-        return view('print.leave-request', compact('leaveRequest'));
+        $leaveRequest->load(['user', 'user.department', 'manager', 'hr', 'director']);
+        
+        $pdf = Pdf::loadView('print.leave-request', compact('leaveRequest'))
+            ->setPaper('a4', 'portrait');
+            
+        return $pdf->stream("leave-request-{$leaveRequest->id}.pdf");
     }
 }

@@ -18,7 +18,7 @@ class Create extends Component
     use Alert, WithFileUploads;
 
     public LeaveRequest $leaveRequest;
-    public array $dateRange = [];
+    public $dateRange = [];
     public ?string $signature = null;
     public $attachment = null;
 
@@ -102,9 +102,9 @@ class Create extends Component
             'user_id' => Auth::id(),
             'start_date' => $this->dateRange[0],
             'end_date' => $this->dateRange[1],
-            'staff_signature' => $signaturePath,
+            'staff_signature' => $signaturePath,  // Ini sudah benar
             'attachment_path' => $attachmentPath,
-            'status' => LeaveRequest::STATUS_PENDING_MANAGER,
+             'status' => LeaveRequest::STATUS_PENDING_MANAGER,
         ]);
 
         $this->leaveRequest->save();

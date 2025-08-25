@@ -9,7 +9,7 @@
 
         <link rel="icon" type="image/png" href="{{ asset('/assets/images/jkb.png') }}">
         <link rel="preconnect" href="https://fonts.bunny.net">
-        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600" rel="stylesheet" />
 
         <tallstackui:script />
         @livewireStyles

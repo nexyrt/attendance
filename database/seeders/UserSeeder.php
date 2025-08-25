@@ -19,8 +19,8 @@ class UserSeeder extends Seeder
         // Create Admin Users
         $admin = User::create([
             'name' => 'Administrator',
-            'email' => 'admin@attendance.com',
-            'password' => Hash::make('admin123'),
+            'email' => 'admin@gmail.com',
+            'password' => Hash::make('password'),
             'role' => 'admin',
             'phone_number' => '+6281234567890',
             'birthdate' => '1985-01-15',
@@ -32,8 +32,8 @@ class UserSeeder extends Seeder
         // Create Director
         $director = User::create([
             'name' => 'Budi Santoso',
-            'email' => 'director@attendance.com',
-            'password' => Hash::make('director123'),
+            'email' => 'direktur@gmail.com',
+            'password' => Hash::make('password'),
             'role' => 'director',
             'phone_number' => '+6281234567891',
             'birthdate' => '1975-03-20',
@@ -58,8 +58,8 @@ class UserSeeder extends Seeder
         // Create Department Managers
         $digitalMarketingManager = User::create([
             'name' => 'Ahmad Fauzi',
-            'email' => 'dm.manager@attendance.com',
-            'password' => Hash::make('manager123'),
+            'email' => 'manager@gmail.com',
+            'password' => Hash::make('password'),
             'role' => 'manager',
             'phone_number' => '+6281234567893',
             'birthdate' => '1987-05-15',
@@ -108,8 +108,8 @@ class UserSeeder extends Seeder
             ],
             [
                 'name' => 'Randi Pratama',
-                'email' => 'randi.dm@attendance.com',
-                'password' => Hash::make('staff123'),
+                'email' => 'randi.pratama@attendance.com',
+                'password' => Hash::make('password'),
                 'role' => 'staff',
                 'phone_number' => '+6281234567897',
                 'birthdate' => '1993-11-25',
@@ -154,8 +154,8 @@ class UserSeeder extends Seeder
             // Detax Staff
             [
                 'name' => 'Bambang Sutrisno',
-                'email' => 'bambang.dtx@attendance.com',
-                'password' => Hash::make('staff123'),
+                'email' => 'staff@gmail.com',
+                'password' => Hash::make('password'),
                 'role' => 'staff',
                 'phone_number' => '+6281234567901',
                 'birthdate' => '1989-10-05',

@@ -83,7 +83,7 @@
             <div>
                 <x-date 
                     label="Leave Period *" 
-                    wire:model.live="dateRange"
+                    wire:model.blur="dateRange"
                     range
                     :min-date="now()->format('Y-m-d')"
                     required
