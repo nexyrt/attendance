@@ -21,7 +21,7 @@ class Index extends Component
     public function schedules()
     {
         return ScheduleModel::orderByRaw("FIELD(day_of_week, 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday')")
-            ->get();
+                      ->get();
     }
 
     #[Computed]
@@ -44,7 +44,7 @@ class Index extends Component
         return in_array(Auth::user()->role, ['admin', 'director']);
     }
 
-    #[Computed]
+    #[Computed] 
     public function canCreateSchedule(): bool
     {
         return $this->canManage() && ScheduleModel::count() < 7;
@@ -61,7 +61,7 @@ class Index extends Component
     {
         $totalDays = 7;
         $existingDays = ScheduleModel::count();
-
+        
         return [
             'total' => $totalDays,
             'existing' => $existingDays,
@@ -70,13 +70,9 @@ class Index extends Component
         ];
     }
 
-    #[Computed]
-    public function departments()
+    #[On('load::schedule-calendar')]
+    public function loadCalendar(): void
     {
-        if (Auth::user()->role === 'manager') {
-            return collect([Auth::user()->department]);
-        }
-
-        return Department::orderBy('name')->get();
+        $this->dispatch('load::calendar-view');
     }
 }

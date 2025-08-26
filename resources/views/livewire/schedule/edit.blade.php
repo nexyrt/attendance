@@ -28,16 +28,12 @@
                                     'sunday' => 'Minggu',
                                 } }}
                             </h3>
-                            
+
                             <div class="flex items-center space-x-2">
                                 <x-badge color="blue" text="{{ ucfirst($schedule['day_of_week']) }}" />
-                                <x-button.circle 
-                                    icon="trash" 
-                                    color="red" 
-                                    size="sm" 
-                                    wire:click="confirmDelete('{{ $schedule['day_of_week'] }}')"
-                                    title="Hapus jadwal {{ $schedule['day_of_week'] }}"
-                                />
+                                <x-button.circle icon="trash" color="red" size="sm"
+                                    wire:click="markForDeletion('{{ $schedule['day_of_week'] }}')"
+                                    title="Hapus jadwal {{ $schedule['day_of_week'] }}" />
                             </div>
                         </div>
 
@@ -52,17 +48,19 @@
                             </div>
                             <div>
                                 <x-input label="Toleransi Terlambat (menit) *" type="number"
-                                    wire:model="schedules.{{ $index }}.late_tolerance" 
-                                    min="0" max="120" required />
+                                    wire:model="schedules.{{ $index }}.late_tolerance" min="0"
+                                    max="120" required />
                             </div>
                         </div>
 
                         {{-- Working Hours Calculation --}}
-                        <div class="mt-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg">
+                        <div
+                            class="mt-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg">
                             <div class="flex items-center justify-between text-sm">
                                 <span class="text-gray-600 dark:text-gray-300">
-                                    <strong>Jam kerja:</strong> 
-                                    {{ $this->calculateWorkingHours($schedule['start_time'], $schedule['end_time']) }} jam/hari
+                                    <strong>Jam kerja:</strong>
+                                    {{ $this->calculateWorkingHours($schedule['start_time'], $schedule['end_time']) }}
+                                    jam/hari
                                 </span>
                                 <span class="text-blue-600 dark:text-blue-400 font-medium">
                                     {{ $schedule['start_time'] }} - {{ $schedule['end_time'] }}
@@ -98,20 +96,25 @@
                 {{-- Summary --}}
                 <x-card>
                     <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-3">Ringkasan Perubahan</h3>
-                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-lg">
+                    <div
+                        class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 p-4 rounded-lg">
                         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-7 gap-2 text-center">
                             @foreach ($schedules as $schedule)
                                 <div class="p-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm">
                                     <div class="font-semibold text-blue-900 dark:text-blue-100 text-xs mb-1">
-                                        {{ substr(match($schedule['day_of_week']) {
-                                            'monday' => 'Senin',
-                                            'tuesday' => 'Selasa', 
-                                            'wednesday' => 'Rabu',
-                                            'thursday' => 'Kamis',
-                                            'friday' => 'Jumat',
-                                            'saturday' => 'Sabtu',
-                                            'sunday' => 'Minggu',
-                                        }, 0, 3) }}
+                                        {{ substr(
+                                            match ($schedule['day_of_week']) {
+                                                'monday' => 'Senin',
+                                                'tuesday' => 'Selasa',
+                                                'wednesday' => 'Rabu',
+                                                'thursday' => 'Kamis',
+                                                'friday' => 'Jumat',
+                                                'saturday' => 'Sabtu',
+                                                'sunday' => 'Minggu',
+                                            },
+                                            0,
+                                            3,
+                                        ) }}
                                     </div>
                                     <div class="text-xs text-blue-700 dark:text-blue-300">
                                         {{ $schedule['start_time'] }} - {{ $schedule['end_time'] }}

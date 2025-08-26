@@ -2,33 +2,32 @@
 
 namespace App\Livewire\Users;
 
+use App\Livewire\Traits\Alert;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\Renderless;
 use Livewire\Component;
 use Livewire\WithPagination;
 
 class Index extends Component
 {
-    use WithPagination;
+    use WithPagination, Alert;
 
-    public ?int $quantity = 5;
-
+    public ?int $quantity = 10;
     public ?string $search = null;
-
-    public array $sort = [
-        'column'    => 'created_at',
-        'direction' => 'desc',
-    ];
+    public array $sort = ['column' => 'created_at', 'direction' => 'desc'];
+    public array $selected = [];
 
     public array $headers = [
-        ['index' => 'id', 'label' => '#'],
-        ['index' => 'name', 'label' => 'Name'],
-        ['index' => 'email', 'label' => 'E-mail'],
-        ['index' => 'created_at', 'label' => 'Created'],
+        ['index' => 'name', 'label' => 'Nama'],
+        ['index' => 'email', 'label' => 'Email'],
+        ['index' => 'role', 'label' => 'Role'],
+        ['index' => 'department', 'label' => 'Departemen', 'sortable' => false],
+        ['index' => 'created_at', 'label' => 'Bergabung'],
         ['index' => 'action', 'sortable' => false],
     ];
 
@@ -40,11 +39,56 @@ class Index extends Component
     #[Computed]
     public function rows(): LengthAwarePaginator
     {
-        return User::query()
+        return User::with('department')
             ->whereNotIn('id', [Auth::id()])
-            ->when($this->search !== null, fn (Builder $query) => $query->whereAny(['name', 'email'], 'like', '%'.trim($this->search).'%'))
-            ->orderBy(...array_values($this->sort))
+            ->when($this->search, fn (Builder $query) => 
+                $query->where(function($q) {
+                    $q->whereAny(['name', 'email'], 'like', '%'.trim($this->search).'%')
+                      ->orWhereHas('department', fn($dept) => 
+                          $dept->where('name', 'like', '%'.trim($this->search).'%')
+                      );
+                })
+            )
+            ->when($this->sort['column'] === 'department', fn (Builder $query) =>
+                $query->leftJoin('departments', 'users.department_id', '=', 'departments.id')
+                      ->orderBy('departments.name', $this->sort['direction'])
+                      ->select('users.*')
+            , fn (Builder $query) => 
+                $query->orderBy($this->sort['column'], $this->sort['direction'])
+            )
             ->paginate($this->quantity)
             ->withQueryString();
+    }
+
+    #[Renderless]
+    public function confirmBulkDelete(): void
+    {
+        if (empty($this->selected)) return;
+
+        $count = count($this->selected);
+        $this->question("Hapus {$count} karyawan?", "Data karyawan yang dihapus tidak dapat dikembalikan.")
+            ->confirm(method: 'bulkDelete')
+            ->cancel()
+            ->send();
+    }
+
+    public function bulkDelete(): void
+    {
+        if (empty($this->selected)) return;
+
+        $count = count($this->selected);
+        User::whereIn('id', $this->selected)->delete();
+        
+        $this->selected = [];
+        $this->resetPage();
+        $this->success("{$count} karyawan berhasil dihapus");
+    }
+
+    public function exportSelected(): void
+    {
+        if (empty($this->selected)) return;
+
+        $count = count($this->selected);
+        $this->success("Export {$count} karyawan sedang diproses");
     }
 }

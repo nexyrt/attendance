@@ -40,11 +40,6 @@
                     <span class="sm:hidden">Pengecualian</span>
                 </x-button>
             @endif
-            <x-button wire:click="$dispatch('load::schedule-calendar')" color="green" icon="calendar-days"
-                class="w-full sm:w-auto">
-                <span class="hidden sm:inline">Lihat Kalender</span>
-                <span class="sm:hidden">Kalender</span>
-            </x-button>
         </div>
     </div>
 
@@ -320,5 +315,6 @@
         @endif
         <livewire:schedule.exception @updated="$refresh" />
     @endif
+
     <livewire:schedule.calendar />
 </div>

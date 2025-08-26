@@ -7,7 +7,6 @@ use App\Models\Schedule as ScheduleModel;
 use Illuminate\Contracts\View\View;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
-use Livewire\Attributes\Renderless;
 use Livewire\Component;
 use Carbon\Carbon;
 
@@ -17,6 +16,7 @@ class Edit extends Component
 
     public bool $modal = false;
     public array $schedules = [];
+    public array $schedulesToDelete = [];
 
     public function render(): View
     {
@@ -26,6 +26,7 @@ class Edit extends Component
     #[On('load::edit-schedule')]
     public function load(): void
     {
+        $this->reset(['schedules', 'schedulesToDelete']);
         $this->loadExistingSchedules();
         $this->modal = true;
     }
@@ -45,43 +46,57 @@ class Edit extends Component
     {
         $this->validate();
 
+        $deletedCount = 0;
+        $updatedCount = 0;
+
+        // Delete marked schedules first
+        foreach ($this->schedulesToDelete as $dayOfWeek) {
+            $deleted = ScheduleModel::where('day_of_week', $dayOfWeek)->delete();
+            if ($deleted) {
+                $deletedCount++;
+            }
+        }
+
+        // Update remaining schedules
         foreach ($this->schedules as $schedule) {
-            ScheduleModel::where('day_of_week', $schedule['day_of_week'])
+            $updated = ScheduleModel::where('day_of_week', $schedule['day_of_week'])
                 ->update([
                     'start_time' => $schedule['start_time'],
                     'end_time' => $schedule['end_time'],
                     'late_tolerance' => $schedule['late_tolerance']
                 ]);
+            if ($updated) {
+                $updatedCount++;
+            }
         }
+
+        // Build success message
+        $message = [];
+        if ($updatedCount > 0) {
+            $message[] = "{$updatedCount} jadwal diperbarui";
+        }
+        if ($deletedCount > 0) {
+            $message[] = "{$deletedCount} jadwal dihapus";
+        }
+
+        $finalMessage = implode(' dan ', $message);
 
         $this->dispatch('updated');
         $this->modal = false;
-        $this->success('Jadwal kerja berhasil diperbarui');
+        $this->success($finalMessage ?: 'Tidak ada perubahan');
     }
 
-    #[Renderless]
-    public function confirmDelete(string $dayOfWeek): void
+    public function markForDeletion(string $dayOfWeek): void
     {
-        $dayName = $this->getDayName($dayOfWeek);
-        
-        $this->question("Hapus jadwal {$dayName}?", "Jadwal kerja untuk hari {$dayName} akan dihapus permanen.")
-            ->confirm(method: 'deleteSchedule', params: $dayOfWeek)
-            ->cancel()
-            ->send();
-    }
-
-    public function deleteSchedule(string $dayOfWeek): void
-    {
-        $schedule = ScheduleModel::where('day_of_week', $dayOfWeek)->first();
-        
-        if (!$schedule) {
-            $this->error('Jadwal tidak ditemukan');
-            return;
+        // Add to deletion list
+        if (!in_array($dayOfWeek, $this->schedulesToDelete)) {
+            $this->schedulesToDelete[] = $dayOfWeek;
         }
-
-        $schedule->delete();
-        $this->loadExistingSchedules();
-        $this->success('Jadwal ' . $this->getDayName($dayOfWeek) . ' berhasil dihapus');
+        
+        // Remove from schedules array
+        $this->schedules = array_values(
+            array_filter($this->schedules, fn($schedule) => $schedule['day_of_week'] !== $dayOfWeek)
+        );
     }
 
     public function calculateWorkingHours(string $startTime, string $endTime): string
@@ -90,6 +105,7 @@ class Edit extends Component
             $start = Carbon::createFromFormat('H:i', $startTime);
             $end = Carbon::createFromFormat('H:i', $endTime);
             
+            // Handle overnight shifts
             if ($end->lessThan($start)) {
                 $end->addDay();
             }
@@ -99,7 +115,8 @@ class Edit extends Component
             $minutes = $diffInMinutes % 60;
             
             if ($minutes > 0) {
-                return $hours . '.' . str_pad(round($minutes * 100 / 60), 2, '0', STR_PAD_LEFT);
+                $decimalMinutes = round(($minutes / 60) * 100) / 100;
+                return number_format($hours + $decimalMinutes, 1);
             }
             
             return (string) $hours;
@@ -110,20 +127,24 @@ class Edit extends Component
 
     private function loadExistingSchedules(): void
     {
-        $existing = ScheduleModel::orderByRaw("FIELD(day_of_week, 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday')")
-                           ->get()
-                           ->keyBy('day_of_week');
+        $existingSchedules = ScheduleModel::orderByRaw("
+            FIELD(day_of_week, 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday')
+        ")->get();
 
-        $this->schedules = [];
-        foreach ($existing as $schedule) {
-            $this->schedules[] = [
+        if ($existingSchedules->isEmpty()) {
+            $this->schedules = [];
+            return;
+        }
+
+        $this->schedules = $existingSchedules->map(function ($schedule) {
+            return [
                 'id' => $schedule->id,
                 'day_of_week' => $schedule->day_of_week,
                 'start_time' => $schedule->start_time ? $schedule->start_time->format('H:i') : '08:00',
                 'end_time' => $schedule->end_time ? $schedule->end_time->format('H:i') : '17:00',
                 'late_tolerance' => $schedule->late_tolerance ?? 30
             ];
-        }
+        })->toArray();
     }
 
     private function getDayName(string $dayOfWeek): string
@@ -151,5 +172,17 @@ class Edit extends Component
             );
         }
         return $summary;
+    }
+
+    #[Computed]
+    public function hasSchedules(): bool
+    {
+        return count($this->schedules) > 0;
+    }
+
+    #[Computed]
+    public function totalWorkingDays(): int
+    {
+        return count($this->schedules);
     }
 }
