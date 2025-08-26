@@ -95,7 +95,7 @@
                         @endif
 
                         <x-side-bar.separator text="Strategic" />
-                        <x-side-bar.item text="Office Management" icon="map-pin" :route="route('office-management.index')" wire:navigate />
+                        <x-side-bar.item text="Office Management" icon="map-pin" :route="route('office-management.index')" />
                     @endif
 
                 </x-side-bar>
