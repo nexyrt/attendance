@@ -80,7 +80,7 @@
                 <div class="flex items-center gap-1">
                     <x-button.circle icon="pencil" color="blue" size="sm"
                         wire:click="$dispatch('load::user', { user: '{{ $row->id }}' })" title="Edit" />
-                    <livewire:users.delete :user="$row" :key="'delete-' . $row->id" @deleted="$refresh" />
+                    <livewire:users.delete :user="$row" :key="uniqid()" @deleted="$refresh" />
                 </div>
             @endinteract
         </x-table>
