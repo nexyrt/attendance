@@ -1,6 +1,6 @@
 <x-guest-layout>
     <div class="my-6 flex items-center justify-center">
-        <img src="{{ asset('/assets/images/kisantra-logo.png') }}" />
+        <img class="w-6" src="{{ asset('/assets/images/kisantra-logo.png') }}" />
     </div>
 
     <form method="POST" action="{{ route('register') }}">
