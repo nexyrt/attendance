@@ -14,7 +14,7 @@
                                          :options="$this->departments" placeholder="Pilih departemen" />
                     </div>
                     <div>
-                        <x-select.native label="Role *" wire:model="user.role" :options="[
+                        <x-select.styled label="Role *" wire:model="user.role" :options="[
                             ['label' => 'Staff', 'value' => 'staff'],
                             ['label' => 'Manager', 'value' => 'manager'], 
                             ['label' => 'Admin', 'value' => 'admin'],

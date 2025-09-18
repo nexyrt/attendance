@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Users;
 
-use App\Livewire\Traits\Alert;
+use Tallstackui\Traits\Interactions;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,7 +15,7 @@ use Livewire\WithPagination;
 
 class Index extends Component
 {
-    use WithPagination, Alert;
+    use WithPagination, Interactions;
 
     public ?int $quantity = 10;
     public ?string $search = null;
