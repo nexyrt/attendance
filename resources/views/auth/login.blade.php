@@ -1,15 +1,17 @@
 <x-guest-layout>
     <div class="my-6 flex items-center justify-center">
-        <img src="{{ asset('/assets/images/kisantra-logo.png') }}" />
+        <img class="w-16" src="{{ asset('/assets/images/kisantra-logo.png') }}" />
     </div>
 
     <form method="POST" action="{{ route('login') }}">
         @csrf
 
         <div class="space-y-4">
-            <x-input label="Email *" type="email" name="email" placeholder="admin@gmail.com" required autofocus autocomplete="username" />
+            <x-input label="Email *" type="email" name="email" placeholder="admin@gmail.com" required autofocus
+                autocomplete="username" />
 
-            <x-password label="Password *" type="password" name="password" required autocomplete="current-password" placeholder="********" />
+            <x-password label="Password *" type="password" name="password" required autocomplete="current-password"
+                placeholder="********" />
         </div>
 
         <div class="block mt-4">

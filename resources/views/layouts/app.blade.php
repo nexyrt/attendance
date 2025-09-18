@@ -55,7 +55,7 @@
                 <x-side-bar smart collapsible>
                     <x-slot:brand>
                         <div class="mt-8 flex items-center justify-center">
-                            <img src="{{ asset('/assets/images/jkb.png') }}" width="40" height="40" />
+                            <img src="{{ asset('/assets/images/kisantra-logo.png') }}" width="40" height="40" />
                         </div>
                     </x-slot:brand>
 
