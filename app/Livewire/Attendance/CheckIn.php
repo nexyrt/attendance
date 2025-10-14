@@ -20,6 +20,9 @@ class CheckIn extends Component
     public ?float $longitude = null;
     public bool $locationLoading = true;
     public ?string $locationError = null;
+    public bool $modal = false;
+    public ?string $notes = null;
+    public ?string $early_leave_reason = null;
 
     public function render(): View
     {
@@ -124,6 +127,18 @@ class CheckIn extends Component
             $this->longitude;
     }
 
+    #[Computed]
+    public function isEarlyLeave(): bool
+    {
+        $schedule = $this->todaySchedule;
+        if (!$schedule || $schedule['status'] === 'holiday') {
+            return false;
+        }
+
+        $workEnd = today()->setTimeFromTimeString($schedule['end_time']);
+        return now()->isBefore($workEnd);
+    }
+
     public function updateLocation(float $lat, float $lng): void
     {
         $this->latitude = $lat;
@@ -136,6 +151,30 @@ class CheckIn extends Component
     {
         $this->locationError = $error;
         $this->locationLoading = false;
+    }
+
+    public function openNotesModal(): void
+    {
+        $this->modal = true;
+    }
+
+    public function closeNotesModal(): void
+    {
+        $this->modal = false;
+        $this->notes = null;
+        $this->early_leave_reason = null;
+        $this->resetErrorBag();
+    }
+
+    public function rules(): array
+    {
+        $rules = ['notes' => ['required', 'string', 'min:10', 'max:1000']];
+
+        if ($this->isEarlyLeave) {
+            $rules['early_leave_reason'] = ['required', 'string', 'min:10', 'max:500'];
+        }
+
+        return $rules;
     }
 
     public function checkIn(): void
@@ -186,9 +225,16 @@ class CheckIn extends Component
             return;
         }
 
+        $this->validate();
+
         $attendance = $this->todayAttendance;
         $validOffice = $this->findValidOffice();
         $workingHours = $this->calculateWorkingHours($attendance);
+
+        $status = $attendance->status;
+        if ($this->isEarlyLeave) {
+            $status = 'early_leave';
+        }
 
         $attendance->fill([
             'check_out' => now(),
@@ -196,6 +242,9 @@ class CheckIn extends Component
             'check_out_longitude' => $this->longitude,
             'check_out_office_id' => $validOffice?->id,
             'working_hours' => $workingHours,
+            'notes' => $this->notes,
+            'early_leave_reason' => $this->early_leave_reason,
+            'status' => $status,
         ]);
 
         $attendance->save();
@@ -205,6 +254,7 @@ class CheckIn extends Component
         unset($this->canCheckIn);
         unset($this->canCheckOut);
 
+        $this->closeNotesModal();
         $this->success("Check-out successful! Working hours: {$workingHours}h");
     }
 
@@ -226,7 +276,7 @@ class CheckIn extends Component
         return null;
     }
 
-    private function calculateDistance(float $lat1, float $lng1, float $lat2, float $lng2): float
+    public function calculateDistance(float $lat1, float $lng1, float $lat2, float $lng2): float
     {
         $earthRadius = 6371000;
         $dLat = deg2rad($lat2 - $lat1);
