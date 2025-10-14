@@ -82,6 +82,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/', \App\Livewire\Director\LeaveRequest\Index::class)->name('index');
             Route::get('/{leaveRequest}/print', [PrintController::class, 'leaveRequest'])->name('print');
         });
+        Route::get('/attendance', \App\Livewire\Director\Attendance\Index::class)->name('director.attendance');
     });
 
     // ==================================================
