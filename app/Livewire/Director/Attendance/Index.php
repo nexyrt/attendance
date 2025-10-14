@@ -50,28 +50,42 @@ class Index extends Component
     {
         $startDate = $this->date_range[0] ?? now()->startOfYear()->format('Y-m-d');
         $endDate = $this->date_range[1] ?? now()->format('Y-m-d');
-        
+
         return Attendance::with(['user.department', 'checkInOffice'])
+            ->has('user') // Only get attendance with existing user
             ->whereBetween('date', [$startDate, $endDate])
-            ->when($this->search, fn(Builder $query) =>
-                $query->whereHas('user', fn($q) => 
+            ->when(
+                $this->search,
+                fn(Builder $query) =>
+                $query->whereHas(
+                    'user',
+                    fn($q) =>
                     $q->where('name', 'like', "%{$this->search}%")
-                      ->orWhere('email', 'like', "%{$this->search}%")
+                        ->orWhere('email', 'like', "%{$this->search}%")
                 )
             )
-            ->when($this->department_filter, fn(Builder $query) =>
-                $query->whereHas('user', fn($q) => 
+            ->when(
+                $this->department_filter,
+                fn(Builder $query) =>
+                $query->whereHas(
+                    'user',
+                    fn($q) =>
                     $q->where('department_id', $this->department_filter)
                 )
             )
-            ->when($this->status_filter, fn(Builder $query) =>
+            ->when(
+                $this->status_filter,
+                fn(Builder $query) =>
                 $query->where('status', $this->status_filter)
             )
-            ->when($this->sort['column'] === 'user', fn(Builder $query) =>
+            ->when(
+                $this->sort['column'] === 'user',
+                fn(Builder $query) =>
                 $query->join('users', 'attendances.user_id', '=', 'users.id')
-                      ->orderBy('users.name', $this->sort['direction'])
-                      ->select('attendances.*')
-            , fn(Builder $query) =>
+                    ->orderBy('users.name', $this->sort['direction'])
+                    ->select('attendances.*')
+                ,
+                fn(Builder $query) =>
                 $query->orderBy($this->sort['column'], $this->sort['direction'])
             )
             ->paginate($this->quantity)
@@ -90,7 +104,7 @@ class Index extends Component
         $startDate = $this->date_range[0] ?? now()->startOfYear()->format('Y-m-d');
         $endDate = $this->date_range[1] ?? now()->format('Y-m-d');
         $query = Attendance::whereBetween('date', [$startDate, $endDate]);
-        
+
         return [
             'total' => $query->count(),
             'present' => (clone $query)->where('status', 'present')->count(),
