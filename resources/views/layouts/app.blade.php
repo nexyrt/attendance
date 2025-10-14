@@ -64,7 +64,7 @@
 
                 {{-- Staff Only --}}
                 @if (auth()->user()->role === 'staff')
-                    <x-side-bar.item text="My Attendance" icon="clock" :route="route('attendance.index')" wire:navigate />
+                    {{-- <x-side-bar.item text="My Attendance" icon="clock" :route="route('attendance.index')" wire:navigate /> --}}
                     <x-side-bar.item text="My Leaves" icon="calendar-days" :route="route('leave-requests.index')" wire:navigate />
                 @endif
 
