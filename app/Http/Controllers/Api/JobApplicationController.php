@@ -1,46 +1,36 @@
 <?php
 
 namespace App\Http\Controllers\Api;
+
+use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Models\JobApplication;
 use App\Models\Department;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
-
 class JobApplicationController
 {
-    //
+     /**
+     * Store a new job application
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
     public function store(Request $request): JsonResponse
     {
         // Validate the incoming data
         $validator = Validator::make($request->all(), [
-            'nama' => 'required|string|max:255',
-            'alamat' => 'required|string',
-            'nomor_telepon' => 'required|string|max:20',
-            'email' => 'required|email|unique:job_applications,email',
-            'posisi' => 'required|string|max:255',
-            'department_id' => 'required|exists:departments,id',
-            'sumber' => [
-                'nullable',
-                Rule::in([
-                    'instagram', 'facebook', 'linkedin', 'twitter',
-                    'jobstreet', 'indeed', 'referral', 'website', 
-                    'walk_in', 'other'
-                ])
-            ],
-            'daftar_melalui' => [
-                'required',
-                Rule::in([
-                    'manual', 'email', 'website', 'whatsapp',
-                    'social_media', 'referral', 'other'
-                ])
-            ],
-            'catatan' => 'nullable|string',
-            'files.*' => 'nullable|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:2048', // 2MB max per file
+            'nama' => ['required', 'string', 'max:255'],
+            'alamat' => ['required', 'string'],
+            'nomor_telepon' => ['required', 'string', 'max:20'],
+            'email' => ['required', 'email', 'unique:job_applications,email'],
+            'posisi' => ['required', 'string', 'max:255'],
+            'department_id' => ['nullable', 'exists:departments,id'], // Made optional
+            'catatan' => ['nullable', 'string'],
+            'files.*' => ['nullable', 'file', 'mimes:pdf,doc,docx,jpg,jpeg,png', 'max:2048'],
         ]);
 
         if ($validator->fails()) {
@@ -52,12 +42,22 @@ class JobApplicationController
         }
 
         try {
-            // Handle file uploads
+            // Auto-determine department if not provided
+            $departmentId = $request->department_id;
+            if (!$departmentId) {
+                $departmentId = $this->determineDepartmentFromPosition($request->posisi, $request->catatan);
+            }
+
+            // Handle file uploads - organized by applicant name
             $filePaths = [];
             if ($request->hasFile('files')) {
+                // Create folder name based on applicant name
+                $folderName = $this->sanitizeFileName($request->nama);
+                $applicantFolder = "job-applications/{$folderName}";
+                
                 foreach ($request->file('files') as $index => $file) {
-                    $fileName = time() . '_' . $index . '_' . $file->getClientOriginalName();
-                    $filePath = $file->storeAs('job-applications', $fileName, 'public');
+                    $fileName = time() . '_' . $index . '_' . $this->sanitizeFileName($file->getClientOriginalName());
+                    $filePath = $file->storeAs($applicantFolder, $fileName, 'public');
                     $filePaths[] = $filePath;
                 }
             }
@@ -68,11 +68,9 @@ class JobApplicationController
                 'alamat' => $request->alamat,
                 'nomor_telepon' => $request->nomor_telepon,
                 'email' => $request->email,
-                'status_penerimaan' => JobApplication::STATUS_PENDING, // Default status
                 'posisi' => $request->posisi,
-                'department_id' => $request->department_id,
+                'department_id' => $departmentId,
                 'sumber' => $request->sumber,
-                'daftar_melalui' => $request->daftar_melalui ?? JobApplication::METHOD_MANUAL,
                 'file_terkait' => $filePaths,
                 'catatan' => $request->catatan,
                 'tanggal_apply' => now(),
@@ -90,11 +88,12 @@ class JobApplicationController
                     'email' => $jobApplication->email,
                     'posisi' => $jobApplication->posisi,
                     'department' => $jobApplication->department->name,
-                    'status' => $jobApplication->getStatusLabel(),
+                    'status' => $jobApplication->status_penerimaan?->value ?? 'pending',
                     'tanggal_apply' => $jobApplication->tanggal_apply->format('Y-m-d H:i:s'),
-                    'file_count' => $jobApplication->getFileCount(),
+                    'file_count' => count($filePaths),
+                    'folder_path' => !empty($filePaths) ? dirname($filePaths[0]) : null,
                 ]
-            ], 201);
+            ], 201); 
 
         } catch (\Exception $e) {
             // Clean up uploaded files if database save fails
@@ -107,7 +106,7 @@ class JobApplicationController
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to submit job application',
-                'error' => $e->getMessage()
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }
@@ -124,24 +123,24 @@ class JobApplicationController
             $query = JobApplication::with('department');
 
             // Apply filters
-            if ($request->has('status') && $request->status !== '') {
+            if ($request->filled('status')) {
                 $query->where('status_penerimaan', $request->status);
             }
 
-            if ($request->has('department_id') && $request->department_id !== '') {
+            if ($request->filled('department_id')) {
                 $query->where('department_id', $request->department_id);
             }
 
-            if ($request->has('posisi') && $request->posisi !== '') {
+            if ($request->filled('posisi')) {
                 $query->where('posisi', 'like', '%' . $request->posisi . '%');
             }
 
-            if ($request->has('sumber') && $request->sumber !== '') {
+            if ($request->filled('sumber')) {
                 $query->where('sumber', $request->sumber);
             }
 
             // Search by name or email
-            if ($request->has('search') && $request->search !== '') {
+            if ($request->filled('search')) {
                 $search = $request->search;
                 $query->where(function ($q) use ($search) {
                     $q->where('nama', 'like', '%' . $search . '%')
@@ -150,17 +149,37 @@ class JobApplicationController
             }
 
             // Pagination
-            $perPage = $request->get('per_page', 15);
+            $perPage = $request->integer('per_page', 15);
             $applications = $query->orderBy('created_at', 'desc')->paginate($perPage);
+
+            // Format the data
+            $formattedData = $applications->getCollection()->map(function ($application) {
+                return [
+                    'id' => $application->id,
+                    'nama' => $application->nama,
+                    'email' => $application->email,
+                    'posisi' => $application->posisi,
+                    'department' => $application->department->name ?? 'N/A',
+                    'status' => $jobApplication->status_penerimaan?->value ?? 'pending',
+                    'status_label' => $application->status_penerimaan->getLabel(),
+                    'sumber' => $application->sumber?->value,
+                    'sumber_label' => $application->sumber?->getLabel(),
+                    'file_count' => count($application->file_terkait ?? []),
+                    'tanggal_apply' => $application->tanggal_apply->format('Y-m-d H:i:s'),
+                    'created_at' => $application->created_at->format('Y-m-d H:i:s'),
+                ];
+            });
 
             return response()->json([
                 'success' => true,
-                'data' => $applications->items(),
+                'data' => $formattedData,
                 'pagination' => [
                     'current_page' => $applications->currentPage(),
                     'total_pages' => $applications->lastPage(),
                     'total_items' => $applications->total(),
                     'per_page' => $applications->perPage(),
+                    'from' => $applications->firstItem(),
+                    'to' => $applications->lastItem(),
                 ]
             ]);
 
@@ -168,7 +187,7 @@ class JobApplicationController
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve job applications',
-                'error' => $e->getMessage()
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }
@@ -192,8 +211,9 @@ class JobApplicationController
                     'alamat' => $application->alamat,
                     'nomor_telepon' => $application->nomor_telepon,
                     'email' => $application->email,
-                    'status_penerimaan' => $application->status_penerimaan,
-                    'status_label' => $application->getStatusLabel(),
+                    'status_penerimaan' => $application->status_penerimaan->value,
+                    'status_label' => $application->status_penerimaan->getLabel(),
+                    'status_badge_color' => $application->status_penerimaan->getBadgeColor(),
                     'posisi' => $application->posisi,
                     'department' => [
                         'id' => $application->department->id,
@@ -201,15 +221,18 @@ class JobApplicationController
                     ],
                     'skor_kandidat' => $application->skor_kandidat,
                     'score_rating' => $application->getScoreRating(),
-                    'sumber' => $application->sumber,
-                    'sumber_label' => $application->getSumberLabel(),
-                    'daftar_melalui' => $application->daftar_melalui,
-                    'daftar_melalui_label' => $application->getDaftarMelaluiLabel(),
+                    'score_color' => $application->getScoreColor(),
+                    'sumber' => $application->sumber?->value,
+                    'sumber_label' => $application->sumber?->getLabel(),
+                    'daftar_melalui' => $application->daftar_melalui->value,
+                    'daftar_melalui_label' => $application->daftar_melalui->getLabel(),
                     'file_terkait' => $application->file_terkait,
-                    'file_count' => $application->getFileCount(),
+                    'file_count' => count($application->file_terkait ?? []),
+                    'folder_path' => !empty($application->file_terkait) ? dirname($application->file_terkait[0]) : null,
                     'catatan' => $application->catatan,
                     'tanggal_apply' => $application->tanggal_apply->format('Y-m-d H:i:s'),
                     'days_old' => $application->getDaysOld(),
+                    'can_be_processed' => $application->canBeProcessed(),
                     'created_at' => $application->created_at->format('Y-m-d H:i:s'),
                     'updated_at' => $application->updated_at->format('Y-m-d H:i:s'),
                 ]
@@ -219,7 +242,7 @@ class JobApplicationController
             return response()->json([
                 'success' => false,
                 'message' => 'Job application not found',
-                'error' => $e->getMessage()
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 404);
         }
     }
@@ -234,14 +257,9 @@ class JobApplicationController
     public function updateStatus(Request $request, int $id): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'status' => [
-                'required',
-                Rule::in([
-                    'pending', 'interview', 'accepted', 'rejected', 'on_hold'
-                ])
-            ],
-            'skor_kandidat' => 'nullable|numeric|between:0,10',
-            'catatan' => 'nullable|string',
+            'status' => ['required', Rule::enum(\App\Enums\ApplicationStatus::class)],
+            'skor_kandidat' => ['nullable', 'numeric', 'between:0,10'],
+            'catatan' => ['nullable', 'string'],
         ]);
 
         if ($validator->fails()) {
@@ -259,11 +277,11 @@ class JobApplicationController
                 'status_penerimaan' => $request->status,
             ];
 
-            if ($request->has('skor_kandidat')) {
+            if ($request->filled('skor_kandidat')) {
                 $updateData['skor_kandidat'] = $request->skor_kandidat;
             }
 
-            if ($request->has('catatan')) {
+            if ($request->filled('catatan')) {
                 $updateData['catatan'] = $request->catatan;
             }
 
@@ -276,10 +294,14 @@ class JobApplicationController
                 'data' => [
                     'id' => $application->id,
                     'nama' => $application->nama,
-                    'status' => $application->status_penerimaan,
-                    'status_label' => $application->getStatusLabel(),
+                    'status' => $application->status_penerimaan->value,
+                    'status_label' => $application->status_penerimaan->getLabel(),
+                    'status_badge_color' => $application->status_penerimaan->getBadgeColor(),
                     'skor_kandidat' => $application->skor_kandidat,
                     'score_rating' => $application->getScoreRating(),
+                    'score_color' => $application->getScoreColor(),
+                    'catatan' => $application->catatan,
+                    'updated_at' => $application->updated_at->format('Y-m-d H:i:s'),
                 ]
             ]);
 
@@ -287,7 +309,7 @@ class JobApplicationController
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update job application',
-                'error' => $e->getMessage()
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }
@@ -299,12 +321,21 @@ class JobApplicationController
      */
     public function getDepartments(): JsonResponse
     {
-        $departments = Department::select('id', 'name')->get();
+        try {
+            $departments = Department::select('id', 'name', 'code')->orderBy('name')->get();
 
-        return response()->json([
-            'success' => true,
-            'data' => $departments
-        ]);
+            return response()->json([
+                'success' => true,
+                'data' => $departments
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve departments',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
     }
 
     /**
@@ -317,11 +348,71 @@ class JobApplicationController
         return response()->json([
             'success' => true,
             'data' => [
-                'status_options' => JobApplication::getStatusOptions(),
-                'sumber_options' => JobApplication::getSumberOptions(),
-                'method_options' => JobApplication::getMethodOptions(),
+                'status_options' => collect(\App\Enums\ApplicationStatus::cases())
+                    ->mapWithKeys(fn($case) => [$case->value => $case->getLabel()]),
+                'sumber_options' => collect(\App\Enums\ApplicationSource::cases())
+                    ->mapWithKeys(fn($case) => [$case->value => $case->getLabel()]),
+                'method_options' => collect(\App\Enums\ApplicationMethod::cases())
+                    ->mapWithKeys(fn($case) => [$case->value => $case->getLabel()]),
             ]
         ]);
+    }
+
+    /**
+     * Get files list for an application
+     *
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function getApplicationFiles(int $id): JsonResponse
+    {
+        try {
+            $application = JobApplication::findOrFail($id);
+            
+            if (empty($application->file_terkait)) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                    'message' => 'No files found for this application'
+                ]);
+            }
+
+            $files = collect($application->file_terkait)->map(function($filePath) use ($application) {
+                $filename = basename($filePath);
+                $exists = Storage::disk('public')->exists($filePath);
+                $size = $exists ? Storage::disk('public')->size($filePath) : 0;
+                
+                return [
+                    'filename' => $filename,
+                    'original_name' => $this->extractOriginalName($filename),
+                    'path' => $filePath,
+                    'folder' => dirname($filePath),
+                    'size' => $size,
+                    'size_formatted' => $this->formatBytes($size),
+                    'exists' => $exists,
+                    'extension' => pathinfo($filename, PATHINFO_EXTENSION),
+                    'download_url' => route('api.job-applications.download-file', [
+                        'id' => $application->id, 
+                        'filename' => $filename
+                    ])
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $files,
+                'total_files' => $files->count(),
+                'total_size' => $this->formatBytes($files->sum('size')),
+                'applicant_folder' => !empty($application->file_terkait) ? dirname($application->file_terkait[0]) : null
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get files',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
     }
 
     /**
@@ -336,21 +427,16 @@ class JobApplicationController
         try {
             $application = JobApplication::findOrFail($id);
             
-            if (!$application->hasFiles()) {
+            if (empty($application->file_terkait)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'No files found for this application'
                 ], 404);
             }
 
-            // Find the file path
-            $filePath = null;
-            foreach ($application->file_terkait as $file) {
-                if (basename($file) === $filename) {
-                    $filePath = $file;
-                    break;
-                }
-            }
+            // Find the file path in the applicant's folder
+            $filePath = collect($application->file_terkait)
+                ->first(fn($file) => basename($file) === $filename);
 
             if (!$filePath || !Storage::disk('public')->exists($filePath)) {
                 return response()->json([
@@ -359,14 +445,222 @@ class JobApplicationController
                 ], 404);
             }
 
-            return Storage::disk('public')->download($filePath);
+            // Get original filename for download
+            $originalName = $this->extractOriginalName($filename);
+
+            return Storage::disk('public')->download($filePath, $originalName);
 
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to download file',
-                'error' => $e->getMessage()
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
+    }
+
+    /**
+     * Delete a job application
+     *
+     * @param int $id
+     * @return JsonResponse
+     */
+    public function destroy(int $id): JsonResponse
+    {
+        try {
+            $application = JobApplication::findOrFail($id);
+
+            // Delete associated files
+            if (!empty($application->file_terkait)) {
+                foreach ($application->file_terkait as $filePath) {
+                    if (Storage::disk('public')->exists($filePath)) {
+                        Storage::disk('public')->delete($filePath);
+                    }
+                }
+
+                // Try to delete the applicant's folder if empty
+                $folderPath = dirname($application->file_terkait[0]);
+                if (Storage::disk('public')->exists($folderPath) && 
+                    empty(Storage::disk('public')->files($folderPath))) {
+                    Storage::disk('public')->deleteDirectory($folderPath);
+                }
+            }
+
+            $application->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Job application deleted successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete job application',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Get application statistics
+     *
+     * @return JsonResponse
+     */
+    public function getStats(): JsonResponse
+    {
+        try {
+            $totalApplications = JobApplication::count();
+            $pendingApplications = JobApplication::where('status_penerimaan', \App\Enums\ApplicationStatus::PENDING)->count();
+            $acceptedApplications = JobApplication::where('status_penerimaan', \App\Enums\ApplicationStatus::ACCEPTED)->count();
+            $rejectedApplications = JobApplication::where('status_penerimaan', \App\Enums\ApplicationStatus::REJECTED)->count();
+            
+            $recentApplications = JobApplication::where('created_at', '>=', now()->subDays(30))->count();
+            
+            $departmentStats = Department::withCount('jobApplications')->get()
+                ->map(function($dept) {
+                    return [
+                        'department' => $dept->name,
+                        'count' => $dept->job_applications_count ?? 0
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'total_applications' => $totalApplications,
+                    'pending_applications' => $pendingApplications,
+                    'accepted_applications' => $acceptedApplications,
+                    'rejected_applications' => $rejectedApplications,
+                    'recent_applications' => $recentApplications,
+                    'acceptance_rate' => $totalApplications > 0 ? round(($acceptedApplications / $totalApplications) * 100, 1) : 0,
+                    'department_breakdown' => $departmentStats,
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get statistics',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
+     * Auto-determine department based on position and context
+     *
+     * @param string $position
+     * @param string|null $notes
+     * @return int
+     */
+    private function determineDepartmentFromPosition(string $position, ?string $notes = null): int
+    {
+        // Get all departments
+        $departments = Department::all();
+        
+        // Create mappings for common positions to departments
+        $positionMappings = [
+            // Digital Marketing department keywords
+            'digital marketing' => 'Digital Marketing',
+            'marketing' => 'Digital Marketing',
+            'social media' => 'Digital Marketing',
+            'content' => 'Digital Marketing',
+            'seo' => 'Digital Marketing',
+            'ads' => 'Digital Marketing',
+            'campaign' => 'Digital Marketing',
+            'copywriter' => 'Digital Marketing',
+            
+            // Sydital department keywords
+            'developer' => 'Sydital',
+            'programmer' => 'Sydital',
+            'software' => 'Sydital',
+            'web' => 'Sydital',
+            'mobile' => 'Sydital',
+            'frontend' => 'Sydital',
+            'backend' => 'Sydital',
+            'fullstack' => 'Sydital',
+            'ui/ux' => 'Sydital',
+            'design' => 'Sydital',
+            'system' => 'Sydital',
+            
+            // Detax department keywords  
+            'tax' => 'Detax',
+            'accounting' => 'Detax',
+            'finance' => 'Detax',
+            'bookkeeping' => 'Detax',
+            'audit' => 'Detax',
+            'financial' => 'Detax',
+            
+            // HR department keywords
+            'hr' => 'HR',
+            'human resource' => 'HR',
+            'recruitment' => 'HR',
+            'admin' => 'HR',
+            'office' => 'HR',
+            'administrative' => 'HR',
+        ];
+
+        $searchText = strtolower($position . ' ' . ($notes ?? ''));
+
+        // Find matching department
+        foreach ($positionMappings as $keyword => $deptName) {
+            if (str_contains($searchText, $keyword)) {
+                $department = $departments->firstWhere('name', $deptName);
+                if ($department) {
+                    return $department->id;
+                }
+            }
+        }
+
+        // Default to first department if no match found
+        $defaultDept = $departments->first();
+        return $defaultDept ? $defaultDept->id : 1;
+    }
+
+    /**
+     * Sanitize filename/folder name to be filesystem safe
+     *
+     * @param string $name
+     * @return string
+     */
+    private function sanitizeFileName(string $name): string
+    {
+        // Remove special characters and replace spaces with underscores
+        $sanitized = preg_replace('/[^a-zA-Z0-9\s\-_.]/', '', $name);
+        $sanitized = preg_replace('/\s+/', '_', $sanitized);
+        $sanitized = trim($sanitized, '._-');
+        
+        // Limit length to prevent filesystem issues
+        return substr($sanitized, 0, 50);
+    }
+
+    /**
+     * Extract original filename from timestamped filename
+     *
+     * @param string $filename
+     * @return string
+     */
+    private function extractOriginalName(string $filename): string
+    {
+        // Remove timestamp and index from filename (e.g., "1703123456_0_resume.pdf" -> "resume.pdf")
+        $parts = explode('_', $filename, 3);
+        return isset($parts[2]) ? $parts[2] : $filename;
+    }
+
+    /**
+     * Format bytes to human readable format
+     *
+     * @param int $bytes
+     * @return string
+     */
+    private function formatBytes(int $bytes): string
+    {
+        if ($bytes === 0) return '0 B';
+        
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $power = floor(log($bytes, 1024));
+        
+        return round($bytes / (1024 ** $power), 1) . ' ' . $units[$power];
     }
 }
