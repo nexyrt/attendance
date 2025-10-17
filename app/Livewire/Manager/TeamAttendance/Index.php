@@ -16,23 +16,27 @@ class Index extends Component
     use WithPagination;
 
     public ?int $quantity = 10;
-    public $dateRange = [];
     public ?string $search = null;
     public ?string $statusFilter = null;
+    public array $dateRange = [];
+
+    // Modal properties
+    public bool $modal = false;
+    public ?Attendance $selectedAttendance = null;
 
     public array $sort = [
-        'column' => 'name',
-        'direction' => 'asc',
+        'column' => 'date',
+        'direction' => 'desc',
     ];
 
     public array $headers = [
-        ['index' => 'name', 'label' => 'Staff Name'],
-        ['index' => 'email', 'label' => 'Email'],
-        ['index' => 'latest_date', 'label' => 'Latest Date'],
+        ['index' => 'user', 'label' => 'Staff Name'],
+        ['index' => 'date', 'label' => 'Date'],
         ['index' => 'check_in', 'label' => 'Check In'],
         ['index' => 'check_out', 'label' => 'Check Out'],
-        ['index' => 'avg_hours', 'label' => 'Avg Hours'],
+        ['index' => 'working_hours', 'label' => 'Working Hours'],
         ['index' => 'status', 'label' => 'Status'],
+        ['index' => 'office', 'label' => 'Location', 'sortable' => false],
         ['index' => 'notes', 'label' => 'Notes', 'sortable' => false],
     ];
 
@@ -51,6 +55,17 @@ class Index extends Component
         ]);
     }
 
+    public function showNotes(int $attendanceId)
+    {
+        $this->selectedAttendance = Attendance::with('user', 'checkInOffice', 'checkOutOffice')->find($attendanceId);
+        $this->modal = true;
+    }
+
+    public function updatedDateRange()
+    {
+        $this->resetPage();
+    }
+
     #[Computed]
     public function rows(): LengthAwarePaginator
     {
@@ -58,72 +73,32 @@ class Index extends Component
         $startDate = $this->dateRange[0] ?? now()->startOfWeek()->format('Y-m-d');
         $endDate = $this->dateRange[1] ?? now()->endOfWeek()->format('Y-m-d');
 
-        $query = User::with([
-            'attendances' => function ($query) use ($startDate, $endDate) {
-                $query->whereBetween('date', [$startDate, $endDate])
-                    ->orderBy('date', 'desc');
-            }
-        ])
-            ->where('department_id', $managerDepartment)
-            ->where('role', 'staff')
-            ->when($this->search, function (Builder $query) {
-                $query->where('name', 'like', '%' . $this->search . '%')
-                    ->orWhere('email', 'like', '%' . $this->search . '%');
+        $query = Attendance::with(['user', 'checkInOffice'])
+            ->whereHas('user', function ($q) use ($managerDepartment) {
+                $q->where('department_id', $managerDepartment)
+                    ->where('role', 'staff');
             })
-            ->when($this->statusFilter, function (Builder $query) use ($startDate, $endDate) {
-                $query->whereHas('attendances', function ($attendanceQuery) use ($startDate, $endDate) {
-                    $attendanceQuery->whereBetween('date', [$startDate, $endDate])
-                        ->where('status', $this->statusFilter);
+            ->whereBetween('date', [$startDate, $endDate])
+            ->when($this->search, function (Builder $query) {
+                $query->whereHas('user', function ($q) {
+                    $q->where('name', 'like', '%' . $this->search . '%')
+                        ->orWhere('email', 'like', '%' . $this->search . '%');
                 });
+            })
+            ->when($this->statusFilter, function (Builder $query) {
+                $query->where('status', $this->statusFilter);
             });
 
-        // Handle custom sorting for attendance-related columns
-        if ($this->sort['column'] === 'latest_date') {
-            $query->leftJoin('attendances', function ($join) use ($startDate, $endDate) {
-                $join->on('users.id', '=', 'attendances.user_id')
-                    ->whereBetween('attendances.date', [$startDate, $endDate]);
-            })
-                ->select('users.*')
-                ->groupBy('users.id')
-                ->orderBy(\DB::raw('MAX(attendances.date)'), $this->sort['direction']);
-        } elseif ($this->sort['column'] === 'status') {
-            $query->leftJoin('attendances', function ($join) use ($startDate, $endDate) {
-                $join->on('users.id', '=', 'attendances.user_id')
-                    ->whereBetween('attendances.date', [$startDate, $endDate]);
-            })
-                ->select('users.*')
-                ->groupBy('users.id')
-                ->orderBy(\DB::raw('MAX(attendances.status)'), $this->sort['direction']);
-        } elseif ($this->sort['column'] === 'check_in') {
-            $query->leftJoin('attendances', function ($join) use ($startDate, $endDate) {
-                $join->on('users.id', '=', 'attendances.user_id')
-                    ->whereBetween('attendances.date', [$startDate, $endDate]);
-            })
-                ->select('users.*')
-                ->groupBy('users.id')
-                ->orderBy(\DB::raw('MAX(attendances.check_in)'), $this->sort['direction']);
-        } elseif ($this->sort['column'] === 'check_out') {
-            $query->leftJoin('attendances', function ($join) use ($startDate, $endDate) {
-                $join->on('users.id', '=', 'attendances.user_id')
-                    ->whereBetween('attendances.date', [$startDate, $endDate]);
-            })
-                ->select('users.*')
-                ->groupBy('users.id')
-                ->orderBy(\DB::raw('MAX(attendances.check_out)'), $this->sort['direction']);
-        } elseif ($this->sort['column'] === 'avg_hours') {
-            $query->leftJoin('attendances', function ($join) use ($startDate, $endDate) {
-                $join->on('users.id', '=', 'attendances.user_id')
-                    ->whereBetween('attendances.date', [$startDate, $endDate]);
-            })
-                ->select('users.*')
-                ->groupBy('users.id')
-                ->orderBy(\DB::raw('AVG(attendances.working_hours)'), $this->sort['direction']);
+        // Handle sorting
+        if ($this->sort['column'] === 'user') {
+            $query->join('users', 'attendances.user_id', '=', 'users.id')
+                ->orderBy('users.name', $this->sort['direction'])
+                ->select('attendances.*');
         } else {
-            $query->orderBy(...array_values($this->sort));
+            $query->orderBy($this->sort['column'], $this->sort['direction']);
         }
 
-        return $query->paginate($this->quantity)
-            ->withQueryString();
+        return $query->paginate($this->quantity)->withQueryString();
     }
 
     private function getAttendanceStats()
@@ -152,6 +127,7 @@ class Index extends Component
 
         return [
             'total_staff' => $totalStaff,
+            'total_records' => $totalAttendanceRecords,
             'present' => $attendanceData['present'] ?? 0,
             'late' => $attendanceData['late'] ?? 0,
             'absent' => max(0, $expectedRecords - $totalAttendanceRecords),
@@ -181,7 +157,8 @@ class Index extends Component
             'present' => 'green',
             'late' => 'yellow',
             'early_leave' => 'orange',
-            'absent' => 'red',
+            'holiday' => 'blue',
+            'pending present' => 'gray',
             default => 'gray'
         };
     }
