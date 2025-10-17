@@ -349,7 +349,7 @@
                             <x-icon name="document-text" class="w-4 h-4 mr-2" />
                             Notes
                         </h4>
-                        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                        <p class="text-sm text-gray-700 dark:text-gray-300">
                             {{ $selectedAttendance->notes }}</p>
                     </div>
                 @endif
