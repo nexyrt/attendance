@@ -49,8 +49,8 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ==================================================
-    // MANAGER LEVEL - Manager role only
-    // ==================================================
+// MANAGER LEVEL - Manager role only
+// ==================================================
     Route::middleware(['role:manager'])->group(function () {
         Route::prefix('manager')->name('manager.')->group(function () {
             Route::prefix('leave-requests')->name('leave-requests.')->group(function () {
@@ -60,6 +60,9 @@ Route::middleware(['auth'])->group(function () {
 
             Route::get('/team-attendance', ManagerTeamAttendance::class)->name('team-attendance');
             Route::get('/team-attendance/analytics', \App\Livewire\Manager\TeamAttendance\Analytics::class)->name('team-attendance.analytics');
+
+            // TAMBAHKAN INI - All Attendance untuk Manager (Rizky Hamdani)
+            Route::get('/attendance', \App\Livewire\Director\Attendance\Index::class)->name('attendance');
         });
     });
 

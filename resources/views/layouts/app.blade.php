@@ -73,6 +73,12 @@
                     <x-side-bar.separator text="Management" />
                     <x-side-bar.item text="Team Attendance" icon="users" :route="route('manager.team-attendance')" wire:navigate />
                     <x-side-bar.item text="Leave Approvals" icon="document-check" :route="route('manager.leave-requests.index')" wire:navigate />
+
+                    {{-- Khusus Rizky Hamdani bisa akses All Attendance --}}
+                    @if (auth()->user()->name === 'Rizky Hamdani')
+                        <x-side-bar.item text="All Attendance" icon="clipboard-document-list" :route="route('manager.attendance')"
+                            wire:navigate />
+                    @endif
                 @endif
 
                 {{-- Director Only --}}
