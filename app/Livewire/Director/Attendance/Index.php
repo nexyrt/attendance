@@ -22,6 +22,10 @@ class Index extends Component
     public array $date_range = [];
     public array $sort = ['column' => 'check_in', 'direction' => 'desc'];
 
+    // Modal properties
+    public bool $modal = false;
+    public ?Attendance $selectedAttendance = null;
+
     public function mount(): void
     {
         $this->date_range = [
@@ -33,16 +37,36 @@ class Index extends Component
     public array $headers = [
         ['index' => 'user', 'label' => 'Karyawan'],
         ['index' => 'department', 'label' => 'Departemen', 'sortable' => false],
+        ['index' => 'date', 'label' => 'Tanggal'],
         ['index' => 'check_in', 'label' => 'Check In'],
         ['index' => 'check_out', 'label' => 'Check Out'],
         ['index' => 'working_hours', 'label' => 'Jam Kerja'],
         ['index' => 'status', 'label' => 'Status'],
         ['index' => 'office', 'label' => 'Lokasi', 'sortable' => false],
+        ['index' => 'notes', 'label' => 'Catatan', 'sortable' => false],
     ];
 
     public function render(): View
     {
         return view('livewire.director.attendance.index');
+    }
+
+    public function showNotes(int $attendanceId)
+    {
+        $this->selectedAttendance = Attendance::with('user.department', 'checkInOffice', 'checkOutOffice')->find($attendanceId);
+        $this->modal = true;
+    }
+
+    public function getStatusBadgeColor($status)
+    {
+        return match ($status) {
+            'present' => 'green',
+            'late' => 'yellow',
+            'early_leave' => 'orange',
+            'holiday' => 'blue',
+            'pending present' => 'gray',
+            default => 'gray'
+        };
     }
 
     #[Computed]
