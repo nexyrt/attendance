@@ -88,3 +88,15 @@
 .ql-picker-label {
     @apply text-gray-700 dark:text-white;
 }
+
+#attendance-modal ol {
+    @apply list-decimal pl-6;
+}
+
+#attendance-modal ul {
+    @apply list-disc pl-6;
+}
+
+#attendance-modal li {
+    @apply ml-4;
+}

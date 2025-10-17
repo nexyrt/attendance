@@ -234,7 +234,7 @@
     </x-card>
 
     {{-- Notes Modal --}}
-    <x-modal title="Attendance Details" wire size="lg" center>
+    <x-modal title="Attendance Details" wire size="lg" center id="attendance-modal">
         @if ($selectedAttendance)
             <div class="space-y-4">
                 {{-- Staff Info --}}
