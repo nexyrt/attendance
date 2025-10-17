@@ -25,5 +25,66 @@
     --color-primary-950: #172554;
 }
 
+#map {
+    height: 280px;
+}
 
-#map { height: 280px; }
+/* Quill Editor Custom Styling */
+.ql-toolbar.ql-snow {
+    @apply border border-gray-300 dark:border-gray-600;
+    @apply rounded-t-lg bg-gray-100 dark:bg-gray-800;
+    @apply px-2 py-1.5;
+    @apply mb-0;
+}
+
+.ql-container.ql-snow {
+    @apply border border-gray-300 dark:border-gray-600 border-t-0;
+    @apply rounded-b-lg bg-white dark:bg-gray-900;
+    @apply text-sm text-gray-900 dark:text-gray-100;
+    min-height: 150px;
+}
+
+/* Remove gap between toolbar and editor */
+.ql-toolbar.ql-snow+.ql-container.ql-snow {
+    margin-top: -1px;
+}
+
+.ql-toolbar .ql-stroke {
+    @apply stroke-gray-700 dark:stroke-gray-300;
+}
+
+.ql-toolbar .ql-fill {
+    @apply fill-gray-700 dark:fill-gray-300;
+}
+
+.ql-toolbar button:hover,
+.ql-toolbar button:focus {
+    @apply bg-gray-200 dark:bg-gray-700 rounded;
+}
+
+.ql-toolbar button:hover .ql-stroke,
+.ql-toolbar button.ql-active .ql-stroke {
+    @apply stroke-primary-500;
+}
+
+.ql-toolbar button:hover .ql-fill,
+.ql-toolbar button.ql-active .ql-fill {
+    @apply fill-primary-500;
+}
+
+.ql-editor {
+    @apply p-3 leading-relaxed;
+}
+
+.ql-editor.ql-blank::before {
+    @apply text-gray-400 dark:text-gray-500 not-italic;
+}
+
+/* Remove Tx (clear format) button */
+.ql-toolbar button.ql-clean {
+    @apply hidden;
+}
+
+.ql-picker-label {
+    @apply text-gray-700 dark:text-white;
+}

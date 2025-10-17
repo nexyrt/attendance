@@ -228,9 +228,12 @@
                     @if ($row->notes || $row->early_leave_reason)
                         <div class="flex items-center gap-2">
                             <div class="max-w-xs flex-1">
-                                <p class="text-sm text-gray-600 dark:text-gray-400 truncate"
-                                    title="{{ $row->notes ?? $row->early_leave_reason }}">
-                                    {{ Str::limit($row->notes ?? $row->early_leave_reason, 30) }}
+                                @php
+                                    $content = $row->notes ?? $row->early_leave_reason;
+                                    $plainText = strip_tags($content);
+                                @endphp
+                                <p class="text-sm text-gray-600 dark:text-gray-400 truncate" title="{{ $plainText }}">
+                                    {{ Str::limit($plainText, 30) }}
                                 </p>
                             </div>
                             <x-button.circle icon="eye" color="blue" sm
@@ -380,8 +383,8 @@
                             <x-icon name="exclamation-triangle" class="w-4 h-4 mr-2" />
                             Alasan Pulang Cepat
                         </h4>
-                        <p class="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                            {{ $selectedAttendance->early_leave_reason }}</p>
+                        <p class="prose prose-sm dark:prose-invert max-w-none">
+                            {!! $selectedAttendance->early_leave_reason !!}</p>
                     </div>
                 @endif
 
@@ -392,8 +395,9 @@
                             <x-icon name="document-text" class="w-4 h-4 mr-2" />
                             Catatan
                         </h4>
-                        <p class="text-sm text-gray-700 dark:text-gray-300">
-                            {{ $selectedAttendance->notes }}</p>
+                        <div class="prose prose-sm dark:prose-invert max-w-none">
+                            {!! $selectedAttendance->notes !!}
+                        </div>
                     </div>
                 @endif
 

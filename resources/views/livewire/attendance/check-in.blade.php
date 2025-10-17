@@ -320,17 +320,48 @@
     </x-card>
 
     {{-- Notes Modal --}}
-    <x-modal wire title="Check Out - {{ $this->isEarlyLeave ? 'Early Leave' : 'Work Summary' }}" size="2xl" center>
+    <x-modal wire title="Check Out - {{ $this->isEarlyLeave ? 'Early Leave' : 'Work Summary' }}" size="2xl"
+        center>
         <form wire:submit="checkOut" class="space-y-4">
-            {{-- Work Notes --}}
+            {{-- Work Notes dengan Quill --}}
             <div>
-                <x-textarea label="Apa yang Anda kerjakan hari ini? *"
-                    hint="Jelaskan tugas dan pencapaian hari ini (minimal 10 karakter)" wire:model="notes"
-                    rows="5"
-                    placeholder="Contoh: Meeting dengan tim marketing untuk membahas campaign Q1, menyelesaikan laporan bulanan, dan review proposal klien baru..." />
+                <label class="block text-sm font-medium mb-2 text-gray-900 dark:text-white">
+                    Apa yang Anda kerjakan hari ini? *
+                </label>
+                <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Jelaskan tugas dan pencapaian hari ini
+                    (minimal 10 karakter)</p>
+
+                <div x-data="{
+                    quill: null,
+                    init() {
+                        this.quill = new Quill(this.$refs.editor, {
+                            theme: 'snow',
+                            modules: {
+                                toolbar: [
+                                    ['bold', 'italic', 'underline'],
+                                    [{ 'list': 'ordered' }, { 'list': 'bullet' }]
+                                ]
+                            },
+                            placeholder: 'Contoh:\n• Meeting dengan tim marketing untuk campaign Q1\n• Menyelesaikan laporan bulanan\n• Review proposal klien baru'
+                        });
+                
+                        this.quill.on('text-change', () => {
+                            $wire.set('notes', this.quill.root.innerHTML);
+                        });
+                
+                        if ($wire.notes) {
+                            this.quill.root.innerHTML = $wire.notes;
+                        }
+                    }
+                }" wire:ignore>
+                    <div x-ref="editor" style="min-height: 150px;"></div>
+                </div>
+                @error('notes')
+                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                @enderror
             </div>
 
-            {{-- Early Leave Reason (jika checkout sebelum waktunya) --}}
+            {{-- Early Leave Reason dengan Quill --}}
             @if ($this->isEarlyLeave)
                 <div
                     class="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-700 rounded-lg p-4">
@@ -348,10 +379,40 @@
                 </div>
 
                 <div>
-                    <x-textarea label="Alasan Pulang Cepat *"
-                        hint="Jelaskan mengapa Anda perlu pulang lebih awal (minimal 10 karakter)"
-                        wire:model="early_leave_reason" rows="3"
-                        placeholder="Contoh: Ada keperluan mendesak keluarga, jadwal ke dokter, dll..." />
+                    <label class="block text-sm font-medium mb-2 text-gray-900 dark:text-white">
+                        Alasan Pulang Cepat *
+                    </label>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-2">Jelaskan mengapa Anda perlu pulang lebih
+                        awal (minimal 10 karakter)</p>
+
+                    <div x-data="{
+                        quill: null,
+                        init() {
+                            this.quill = new Quill(this.$refs.editor, {
+                                theme: 'snow',
+                                modules: {
+                                    toolbar: [
+                                        ['bold', 'italic', 'underline'],
+                                        [{ 'list': 'ordered' }, { 'list': 'bullet' }]
+                                    ]
+                                },
+                                placeholder: 'Contoh:\n• Ada keperluan mendesak keluarga\n• Jadwal ke dokter\n• Urusan penting lainnya'
+                            });
+                    
+                            this.quill.on('text-change', () => {
+                                $wire.set('early_leave_reason', this.quill.root.innerHTML);
+                            });
+                    
+                            if ($wire.early_leave_reason) {
+                                this.quill.root.innerHTML = $wire.early_leave_reason;
+                            }
+                        }
+                    }" wire:ignore>
+                        <div x-ref="editor" style="min-height: 120px;"></div>
+                    </div>
+                    @error('early_leave_reason')
+                        <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
             @endif
 
