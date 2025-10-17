@@ -77,7 +77,8 @@
 }
 
 .ql-editor.ql-blank::before {
-    @apply text-gray-400 dark:text-gray-500 not-italic;
+    @apply text-gray-400 dark:text-gray-500;
+    font-style: normal !important;
 }
 
 /* Remove Tx (clear format) button */
