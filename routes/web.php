@@ -70,10 +70,14 @@ Route::middleware(['auth'])->group(function () {
     // ADMIN LEVEL - Admin roles
     // ==================================================
     Route::middleware(['role:admin'])->group(function () {
-        Route::prefix('admin/leave-requests')->name('admin.leave-requests.')->group(function () {
-            // Leave Request Management
-            Route::get('/', \App\Livewire\Admin\LeaveRequest\Index::class)->name('index');
-            Route::get('/{leaveRequest}/print', [PrintController::class, 'leaveRequest'])->name('print');
+        Route::prefix('admin')->name('admin.')->group(function () {
+            Route::prefix('leave-requests')->name('leave-requests.')->group(function () {
+                // Leave Request Management
+                Route::get('/', \App\Livewire\Admin\LeaveRequest\Index::class)->name('index');
+                Route::get('/{leaveRequest}/print', [PrintController::class, 'leaveRequest'])->name('print');
+            });
+
+            Route::get('/attendance', \App\Livewire\Director\Attendance\Index::class)->name('attendance');
         });
     });
 
