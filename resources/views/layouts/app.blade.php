@@ -100,6 +100,8 @@
                     @if (in_array(auth()->user()->role, ['admin']))
                         <x-side-bar.item text="HR Leave Approval" icon="document-check" :route="route('admin.leave-requests.index')"
                             wire:navigate />
+                        <x-side-bar.item text="All Attendance" icon="clipboard-document-list" :route="route('admin.attendance')"
+                            wire:navigate />
                     @endif
 
                     <x-side-bar.separator text="Strategic" />
