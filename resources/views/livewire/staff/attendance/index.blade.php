@@ -325,7 +325,7 @@
                             Notes
                         </h4>
                         <p class="text-sm text-gray-700 dark:text-gray-300">
-                            {{ $this->selectedAttendance->notes }}
+                            {!! $this->selectedAttendance->notes !!}
                         </p>
                     </div>
                 @endif
@@ -338,7 +338,7 @@
                             Early Leave Reason
                         </h4>
                         <p class="text-sm text-gray-700 dark:text-gray-300">
-                            {{ $this->selectedAttendance->early_leave_reason }}
+                            {!! $this->selectedAttendance->early_leave_reason !!}
                         </p>
                     </div>
                 @endif
