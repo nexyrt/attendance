@@ -60,27 +60,36 @@
                     </div>
                 </x-slot:brand>
 
-                {{-- All Roles --}}
+                {{-- Global Menu - All Roles --}}
                 <x-side-bar.item text="Dashboard" icon="home" :route="route('dashboard')" wire:navigate />
                 <x-side-bar.item text="Check In/Out" icon="cursor-arrow-rays" :route="route('attendance.check-in')" wire:navigate />
 
                 {{-- Staff Only --}}
                 @if (auth()->user()->role === 'staff')
-                    {{-- <x-side-bar.item text="My Attendance" icon="clock" :route="route('attendance.index')" wire:navigate /> --}}
-                    <x-side-bar.item text="My Leaves" icon="calendar-days" :route="route('leave-requests.index')" wire:navigate />
+                    <x-side-bar.separator text="My Workspace" />
+                    <x-side-bar.item text="My Attendance" icon="clock" :route="route('staff.attendance')" wire:navigate />
+                    <x-side-bar.item text="My Leaves" icon="calendar-days" :route="route('staff.leave-requests.index')" wire:navigate />
                 @endif
 
                 {{-- Manager Only --}}
                 @if (auth()->user()->role === 'manager')
-                    <x-side-bar.separator text="Management" />
+                    <x-side-bar.separator text="Team Management" />
                     <x-side-bar.item text="Team Attendance" icon="users" :route="route('manager.team-attendance')" wire:navigate />
                     <x-side-bar.item text="Leave Approvals" icon="document-check" :route="route('manager.leave-requests.index')" wire:navigate />
 
-                    {{-- Khusus Rizky Hamdani bisa akses All Attendance --}}
+                    {{-- Special: Rizky Hamdani can access All Attendance --}}
                     @if (auth()->user()->name === 'Rizky Hamdani')
                         <x-side-bar.item text="All Attendance" icon="clipboard-document-list" :route="route('manager.attendance')"
                             wire:navigate />
                     @endif
+                @endif
+
+                {{-- Admin Only --}}
+                @if (auth()->user()->role === 'admin')
+                    <x-side-bar.separator text="HR Management" />
+                    <x-side-bar.item text="All Attendance" icon="clipboard-document-list" :route="route('admin.attendance')"
+                        wire:navigate />
+                    <x-side-bar.item text="Leave Approvals" icon="document-check" :route="route('admin.leave-requests.index')" wire:navigate />
                 @endif
 
                 {{-- Director Only --}}
@@ -91,23 +100,13 @@
                     <x-side-bar.item text="Final Leave Approval" icon="shield-check" :route="route('director.leave-requests.index')" wire:navigate />
                 @endif
 
-                {{-- Admin, Direktur & Manager --}}
+                {{-- Shared Management - Admin, Director & Manager --}}
                 @if (in_array(auth()->user()->role, ['admin', 'director', 'manager']))
-                    <x-side-bar.separator text="HR Management" />
+                    <x-side-bar.separator text="System Management" />
                     <x-side-bar.item text="Users" icon="user-group" :route="route('users.index')" wire:navigate />
                     <x-side-bar.item text="Schedule" icon="clock" :route="route('schedule.index')" wire:navigate />
-
-                    @if (in_array(auth()->user()->role, ['admin']))
-                        <x-side-bar.item text="HR Leave Approval" icon="document-check" :route="route('admin.leave-requests.index')"
-                            wire:navigate />
-                        <x-side-bar.item text="All Attendance" icon="clipboard-document-list" :route="route('admin.attendance')"
-                            wire:navigate />
-                    @endif
-
-                    <x-side-bar.separator text="Strategic" />
-                    <x-side-bar.item text="Office Management" icon="map-pin" :route="route('office-management.index')" />
+                    <x-side-bar.item text="Office Locations" icon="map-pin" :route="route('office-management.index')" wire:navigate />
                 @endif
-
             </x-side-bar>
         </x-slot:menu>
         {{ $slot }}

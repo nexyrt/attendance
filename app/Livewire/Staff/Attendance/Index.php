@@ -16,9 +16,10 @@ class Index extends Component
     use WithPagination;
 
     public ?int $quantity = 10;
-    public ?string $search = null;
     public ?string $status = null;
-    public ?string $month = null;
+    public ?string $search = null;
+    public array $dateRange = [];
+    public bool $modal = false;
 
     public array $sort = [
         'column' => 'date',
@@ -32,11 +33,18 @@ class Index extends Component
         ['index' => 'working_hours', 'label' => 'Hours'],
         ['index' => 'status', 'label' => 'Status'],
         ['index' => 'office', 'label' => 'Office', 'sortable' => false],
+        ['index' => 'action', 'label' => '', 'sortable' => false],
     ];
+
+    public ?int $selectedAttendanceId = null;
 
     public function mount(): void
     {
-        $this->month = now()->format('Y-m');
+        // Set default date range to current month
+        $this->dateRange = [
+            now()->startOfMonth()->format('Y-m-d'),
+            now()->endOfMonth()->format('Y-m-d')
+        ];
     }
 
     public function render(): View
@@ -50,14 +58,14 @@ class Index extends Component
         return Attendance::query()
             ->where('user_id', Auth::id())
             ->with(['checkInOffice', 'checkOutOffice'])
-            ->when($this->search, fn(Builder $query) => 
-                $query->whereDate('date', $this->search)
+            ->when(
+                count($this->dateRange) === 2,
+                fn(Builder $query) =>
+                $query->whereBetween('date', $this->dateRange)
             )
-            ->when(!$this->search && $this->month, fn(Builder $query) => 
-                $query->whereYear('date', substr($this->month, 0, 4))
-                      ->whereMonth('date', substr($this->month, 5, 2))
-            )
-            ->when($this->status, fn(Builder $query) => 
+            ->when(
+                $this->status,
+                fn(Builder $query) =>
                 $query->where('status', $this->status)
             )
             ->orderBy(...array_values($this->sort))
@@ -69,31 +77,61 @@ class Index extends Component
     public function monthlyStats(): array
     {
         $userId = Auth::id();
-        $year = substr($this->month, 0, 4);
-        $monthNum = substr($this->month, 5, 2);
 
         $attendances = Attendance::where('user_id', $userId)
-            ->whereYear('date', $year)
-            ->whereMonth('date', $monthNum)
+            ->when(
+                count($this->dateRange) === 2,
+                fn(Builder $query) =>
+                $query->whereBetween('date', $this->dateRange)
+            )
             ->get();
 
         return [
             'total_days' => $attendances->count(),
             'present_days' => $attendances->where('status', 'present')->count(),
             'late_days' => $attendances->where('status', 'late')->count(),
+            'early_leave_days' => $attendances->where('status', 'early_leave')->count(),
             'total_hours' => $attendances->sum('working_hours'),
             'avg_hours' => $attendances->avg('working_hours') ?? 0,
+            'total_late_hours' => $attendances->sum('late_hours'),
         ];
     }
 
     public function getStatusOptions(): array
     {
         return [
-            '' => 'All Status',
-            'present' => 'Present',
-            'late' => 'Late',
-            'early_leave' => 'Early Leave',
-            'holiday' => 'Holiday',
+            ['label' => 'All Status', 'value' => ''],
+            ['label' => 'Present', 'value' => 'present'],
+            ['label' => 'Late', 'value' => 'late'],
+            ['label' => 'Early Leave', 'value' => 'early_leave'],
+            ['label' => 'Holiday', 'value' => 'holiday'],
         ];
+    }
+
+    public function resetFilters(): void
+    {
+        $this->reset(['status']);
+        $this->dateRange = [
+            now()->startOfMonth()->format('Y-m-d'),
+            now()->endOfMonth()->format('Y-m-d')
+        ];
+        $this->resetPage();
+    }
+
+    public function viewNotes(int $attendanceId): void
+    {
+        $this->modal = true;
+        $this->selectedAttendanceId = $attendanceId;
+    }
+
+    #[Computed]
+    public function selectedAttendance(): ?Attendance
+    {
+        if (!$this->selectedAttendanceId) {
+            return null;
+        }
+
+        return Attendance::with(['checkInOffice', 'checkOutOffice'])
+            ->find($this->selectedAttendanceId);
     }
 }
