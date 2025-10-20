@@ -244,7 +244,7 @@
     {{-- Notes Modal --}}
     <x-modal wire center :title="$selectedAttendanceId
         ? 'Attendance Details - ' . $this->selectedAttendance?->date->format('M j, Y')
-        : 'Attendance Details'" size="2xl">
+        : 'Attendance Details'" id="attendance-modal" size="2xl">
         @if ($selectedAttendanceId && $this->selectedAttendance)
             <div class="space-y-4">
                 {{-- Basic Info --}}
