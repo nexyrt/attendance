@@ -2,7 +2,7 @@
     {{-- Header --}}
     <div class="flex justify-between items-center">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">New Leave Request</h1>
-        <x-button href="{{ route('leave-requests.index') }}" color="gray" wire:navigate>
+        <x-button href="{{ route('staff.leave-requests.index') }}" color="gray" wire:navigate>
             Back to List
         </x-button>
     </div>
@@ -125,7 +125,7 @@
 
             {{-- Submit Button --}}
             <div class="flex justify-end space-x-4">
-                <x-button type="button" color="gray" href="{{ route('leave-requests.index') }}" wire:navigate>
+                <x-button type="button" color="gray" href="{{ route('staff.leave-requests.index') }}" wire:navigate>
                     Cancel
                 </x-button>
                 <x-button 

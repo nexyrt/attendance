@@ -31,7 +31,7 @@
     {{-- Header --}}
     <div class="text-center py-2">
         <h1 class="text-xl font-bold text-gray-900 dark:text-white">Attendance</h1>
-        <p class="text-sm text-gray-600 dark:text-gray-400">{{ now()->format('l, M j • H:i') }}</p>
+        <p class="text-sm  dark:text-gray-400">{{ now()->format('l, M j • H:i') }}</p>
     </div>
 
     {{-- Schedule + Status Row --}}
@@ -51,7 +51,7 @@
                             <h3 class="font-medium text-gray-900 dark:text-white">{{ $this->todaySchedule['title'] }}
                             </h3>
                             @if ($this->todaySchedule['status'] !== 'holiday')
-                                <p class="text-xs text-gray-600">{{ $this->todaySchedule['start_time'] }} -
+                                <p class="text-xs ">{{ $this->todaySchedule['start_time'] }} -
                                     {{ $this->todaySchedule['end_time'] }}</p>
                             @endif
                         </div>
@@ -76,7 +76,7 @@
                             </div>
                             <div>
                                 <h3 class="font-medium text-green-600">Checked In</h3>
-                                <p class="text-xs text-gray-600">{{ $this->todayAttendance->check_in->format('H:i') }}
+                                <p class="text-xs ">{{ $this->todayAttendance->check_in->format('H:i') }}
                                 </p>
                             </div>
                         </div>
@@ -98,7 +98,7 @@
                             </div>
                             <div>
                                 <h3 class="font-medium text-blue-600">Completed</h3>
-                                <p class="text-xs text-gray-600">{{ $this->todayAttendance->check_in->format('H:i') }} -
+                                <p class="text-xs ">{{ $this->todayAttendance->check_in->format('H:i') }} -
                                     {{ $this->todayAttendance->check_out->format('H:i') }}</p>
                             </div>
                         </div>
@@ -121,7 +121,7 @@
                             </svg>
                         </div>
                         <div>
-                            <h3 class="font-medium text-gray-600">Ready</h3>
+                            <h3 class="font-medium ">Ready</h3>
                             <p class="text-xs text-gray-500">Start your workday</p>
                         </div>
                     </div>
@@ -145,7 +145,7 @@
             <div x-show="$wire.locationLoading" class="text-center py-4">
                 <div class="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-2">
                 </div>
-                <p class="text-xs text-gray-600">Getting location...</p>
+                <p class="text-xs ">Getting location...</p>
             </div>
 
             <div x-show="$wire.locationError" class="text-center py-4">

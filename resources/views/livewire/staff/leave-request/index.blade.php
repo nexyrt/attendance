@@ -2,7 +2,7 @@
     {{-- Header --}}
     <div class="flex justify-between items-center">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Leave Requests</h1>
-        <x-button href="{{ route('leave-requests.create') }}" color="blue" wire:navigate>
+        <x-button href="{{ route('staff.leave-requests.create') }}" color="blue" wire:navigate>
             New Request
         </x-button>
     </div>
