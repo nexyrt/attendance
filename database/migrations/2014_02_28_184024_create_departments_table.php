@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::create('departments', function (Blueprint $table) {
             $table->id();
-            $table->enum('name', ['Digital Marketing', 'Sydital', 'Detax', 'HR']);
+            $table->enum('name', ['Digital Marketing', 'Sistem Digital', 'Administrasi Pajak', 'HR']);
             $table->string('code')->unique();
             $table->timestamps();
         });

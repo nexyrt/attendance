@@ -18,11 +18,11 @@ class DepartmentSeeder extends Seeder
                 'code' => 'DM001',
             ],
             [
-                'name' => 'Sydital',
+                'name' => 'Sistem Digital',
                 'code' => 'SYD001',
             ],
             [
-                'name' => 'Detax',
+                'name' => 'Administrasi Pajak',
                 'code' => 'DTX001',
             ],
             [

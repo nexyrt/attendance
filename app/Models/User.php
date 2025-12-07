@@ -10,16 +10,16 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, SoftDeletes;
+    use HasFactory, Notifiable, SoftDeletes, HasRoles;
 
     protected $fillable = [
         'name',
         'email',
         'password',
-        'role',
         'department_id',
         'position',
         'salary',
@@ -66,16 +66,6 @@ class User extends Authenticatable
     public function leaveBalance()
     {
         return $this->hasOne(LeaveBalance::class);
-    }
-
-    public function isAdmin($role)
-    {
-        return $role === 'admin';
-    }
-
-    public function isUser($role)
-    {
-        return $role === 'user';
     }
 
     public function leaveRequests() 

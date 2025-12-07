@@ -61,51 +61,89 @@
                 </x-slot:brand>
 
                 {{-- Global Menu - All Roles --}}
-                <x-side-bar.item text="Dashboard" icon="home" :route="route('dashboard')" wire:navigate />
-                <x-side-bar.item text="Check In/Out" icon="cursor-arrow-rays" :route="route('attendance.check-in')" wire:navigate />
+                @can('dashboard.view')
+                    <x-side-bar.item text="Dashboard" icon="home" :route="route('dashboard')" wire:navigate />
+                @endcan
+
+                @can('attendance.check-in')
+                    <x-side-bar.item text="Check In/Out" icon="cursor-arrow-rays" :route="route('attendance.check-in')" wire:navigate />
+                @endcan
 
                 {{-- Staff Only --}}
-                @if (auth()->user()->role === 'staff')
+                @if (auth()->user()->hasAnyPermission(['attendance.view-own', 'leave-requests.view-own']))
                     <x-side-bar.separator text="My Workspace" />
-                    <x-side-bar.item text="My Attendance" icon="clock" :route="route('staff.attendance')" wire:navigate />
-                    <x-side-bar.item text="My Leaves" icon="calendar-days" :route="route('staff.leave-requests.index')" wire:navigate />
+
+                    @can('attendance.view-own')
+                        <x-side-bar.item text="My Attendance" icon="clock" :route="route('staff.attendance')" wire:navigate />
+                    @endcan
+
+                    @can('leave-requests.view-own')
+                        <x-side-bar.item text="My Leaves" icon="calendar-days" :route="route('staff.leave-requests.index')" wire:navigate />
+                    @endcan
                 @endif
 
                 {{-- Manager Only --}}
-                @if (auth()->user()->role === 'manager')
+                @if (auth()->user()->hasAnyPermission(['attendance.view-team', 'leave-requests.view-pending']))
                     <x-side-bar.separator text="Team Management" />
-                    <x-side-bar.item text="Team Attendance" icon="users" :route="route('manager.team-attendance')" wire:navigate />
-                    <x-side-bar.item text="Leave Approvals" icon="document-check" :route="route('manager.leave-requests.index')" wire:navigate />
 
-                    {{-- Special: Rizky Hamdani can access All Attendance --}}
-                    @if (auth()->user()->name === 'Rizky Hamdani')
+                    @can('attendance.view-team')
+                        <x-side-bar.item text="Team Attendance" icon="users" :route="route('manager.team-attendance')" wire:navigate />
+                    @endcan
+
+                    @can('leave-requests.view-pending')
+                        <x-side-bar.item text="Leave Approvals" icon="document-check" :route="route('manager.leave-requests.index')" wire:navigate />
+                    @endcan
+
+                    {{-- Special: All Attendance for specific managers --}}
+                    @can('attendance.view-all')
                         <x-side-bar.item text="All Attendance" icon="clipboard-document-list" :route="route('manager.attendance')"
                             wire:navigate />
-                    @endif
+                    @endcan
                 @endif
 
                 {{-- Admin Only --}}
-                @if (auth()->user()->role === 'admin')
+                @if (auth()->user()->hasRole('admin'))
                     <x-side-bar.separator text="HR Management" />
-                    <x-side-bar.item text="All Attendance" icon="clipboard-document-list" :route="route('admin.attendance')"
-                        wire:navigate />
-                    <x-side-bar.item text="Leave Approvals" icon="document-check" :route="route('admin.leave-requests.index')" wire:navigate />
+
+                    @can('attendance.view-all')
+                        <x-side-bar.item text="All Attendance" icon="clipboard-document-list" :route="route('admin.attendance')"
+                            wire:navigate />
+                    @endcan
+
+                    @can('leave-requests.view-pending')
+                        <x-side-bar.item text="Leave Approvals" icon="document-check" :route="route('admin.leave-requests.index')" wire:navigate />
+                    @endcan
                 @endif
 
                 {{-- Director Only --}}
-                @if (auth()->user()->role === 'director')
+                @if (auth()->user()->hasRole('director'))
                     <x-side-bar.separator text="Executive" />
-                    <x-side-bar.item text="All Attendance" icon="clipboard-document-list" :route="route('director.attendance')"
-                        wire:navigate />
-                    <x-side-bar.item text="Final Leave Approval" icon="shield-check" :route="route('director.leave-requests.index')" wire:navigate />
+
+                    @can('attendance.view-all')
+                        <x-side-bar.item text="All Attendance" icon="clipboard-document-list" :route="route('director.attendance')"
+                            wire:navigate />
+                    @endcan
+
+                    @can('leave-requests.view-pending')
+                        <x-side-bar.item text="Final Leave Approval" icon="shield-check" :route="route('director.leave-requests.index')" wire:navigate />
+                    @endcan
                 @endif
 
                 {{-- Shared Management - Admin, Director & Manager --}}
-                @if (in_array(auth()->user()->role, ['admin', 'director', 'manager']))
+                @if (auth()->user()->hasAnyPermission(['users.view', 'schedule.view', 'office-locations.view']))
                     <x-side-bar.separator text="System Management" />
-                    <x-side-bar.item text="Users" icon="user-group" :route="route('users.index')" wire:navigate />
-                    <x-side-bar.item text="Schedule" icon="clock" :route="route('schedule.index')" wire:navigate />
-                    <x-side-bar.item text="Office Locations" icon="map-pin" :route="route('office-management.index')" wire:navigate />
+
+                    @can('users.view')
+                        <x-side-bar.item text="Users" icon="user-group" :route="route('users.index')" wire:navigate />
+                    @endcan
+
+                    @can('schedule.view')
+                        <x-side-bar.item text="Schedule" icon="clock" :route="route('schedule.index')" wire:navigate />
+                    @endcan
+
+                    @can('office-locations.view')
+                        <x-side-bar.item text="Office Locations" icon="map-pin" :route="route('office-management.index')" wire:navigate />
+                    @endcan
                 @endif
             </x-side-bar>
         </x-slot:menu>
