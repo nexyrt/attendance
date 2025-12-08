@@ -17,7 +17,8 @@ class Cancel extends Component
     {
         return <<<'HTML'
         <div>
-            <x-button.circle icon="x-mark" color="red" wire:click="confirm" />
+            <x-button.circle icon="x-circle" color="red" size="sm" 
+                wire:click="confirm" title="Batalkan" />
         </div>
         HTML;
     }
@@ -25,7 +26,8 @@ class Cancel extends Component
     #[Renderless]
     public function confirm(): void
     {
-        $this->question('Cancel Leave Request?', 'This action cannot be undone.')
+        $this->dialog()
+            ->question('Batalkan pengajuan cuti?', 'Pengajuan yang dibatalkan tidak dapat dikembalikan.')
             ->confirm(method: 'cancel')
             ->cancel()
             ->send();
@@ -34,22 +36,18 @@ class Cancel extends Component
     public function cancel(): void
     {
         if (!$this->leaveRequest->canBeCancelled()) {
-            $this->error('This request cannot be cancelled');
+            $this->toast()
+                ->error('Gagal!', 'Pengajuan ini tidak dapat dibatalkan')
+                ->send();
             return;
         }
 
         $this->leaveRequest->cancel();
 
-        // Restore leave balance if annual leave
-        if ($this->leaveRequest->type === 'annual') {
-            $leaveBalance = $this->leaveRequest->user->currentLeaveBalance();
-            if ($leaveBalance) {
-                $usedDays = $this->leaveRequest->getDurationInDays();
-                $leaveBalance->updateBalance($leaveBalance->used_balance - $usedDays);
-            }
-        }
-
         $this->dispatch('cancelled');
-        $this->success('Leave request cancelled successfully');
+
+        $this->toast()
+            ->success('Berhasil!', 'Pengajuan cuti berhasil dibatalkan')
+            ->send();
     }
 }

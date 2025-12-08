@@ -9,20 +9,26 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Spatie\Permission\Models\Role;
 
 class Create extends Component
 {
     use Alert;
 
-    public User $user;
-    public ?string $password = null;
-    public ?string $password_confirmation = null;
+    // Modal Control
     public bool $modal = false;
 
-    public function mount(): void
-    {
-        $this->user = new User();
-    }
+    // Form Fields - Individual Properties
+    public ?string $name = null;
+    public ?string $email = null;
+    public ?string $phone_number = null;
+    public ?string $role = null;
+    public ?int $department_id = null;
+    public ?string $birthdate = null;
+    public ?float $salary = null;
+    public ?string $address = null;
+    public ?string $password = null;
+    public ?string $password_confirmation = null;
 
     public function render(): View
     {
@@ -37,32 +43,53 @@ class Create extends Component
             ->toArray();
     }
 
+    #[Computed]
+    public function roles(): array
+    {
+        return Role::orderBy('name')->get()
+            ->map(fn($role) => ['label' => ucfirst($role->name), 'value' => $role->name])
+            ->toArray();
+    }
+
     public function rules(): array
     {
         return [
-            'user.name' => ['required', 'string', 'max:255'],
-            'user.email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')],
-            'user.role' => ['required', 'in:staff,manager,admin,director'],
-            'user.department_id' => ['nullable', 'exists:departments,id'],
-            'user.phone_number' => ['nullable', 'string', 'max:20'],
-            'user.birthdate' => ['nullable', 'date'],
-            'user.salary' => ['nullable', 'numeric', 'min:0'],
-            'user.address' => ['nullable', 'string'],
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')],
+            'role' => ['required', 'string', 'exists:roles,name'],
+            'department_id' => ['nullable', 'exists:departments,id'],
+            'phone_number' => ['nullable', 'string', 'max:20'],
+            'birthdate' => ['nullable', 'date'],
+            'salary' => ['nullable', 'numeric', 'min:0'],
+            'address' => ['nullable', 'string'],
             'password' => ['required', 'string', 'min:8', 'confirmed']
         ];
     }
 
     public function save(): void
     {
-        $this->validate();
+        $validated = $this->validate();
 
-        $this->user->password = bcrypt($this->password);
-        $this->user->email_verified_at = now();
-        $this->user->save();
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone_number' => $validated['phone_number'],
+            'department_id' => $validated['department_id'],
+            'birthdate' => $validated['birthdate'],
+            'salary' => $validated['salary'],
+            'address' => $validated['address'],
+            'password' => bcrypt($validated['password']),
+            'email_verified_at' => now(),
+        ]);
+
+        // Assign role using Spatie
+        $user->assignRole($validated['role']);
 
         $this->dispatch('created');
         $this->reset();
-        $this->user = new User();
-        $this->success('Karyawan berhasil ditambahkan');
+
+        $this->toast()
+            ->success('Berhasil!', 'Karyawan berhasil ditambahkan')
+            ->send();
     }
 }

@@ -10,25 +10,51 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
+use Spatie\Permission\Models\Role;
 
 class Update extends Component
 {
     use Alert;
 
-    public ?User $user = null;
+    // Modal Control
+    public bool $modal = false;
+
+    // User ID untuk tracking
+    public ?int $userId = null;
+
+    // Form Fields - Individual Properties
+    public ?string $name = null;
+    public ?string $email = null;
+    public ?string $phone_number = null;
+    public ?string $role = null;
+    public ?int $department_id = null;
+    public ?string $birthdate = null;
+    public ?float $salary = null;
+    public ?string $address = null;
     public ?string $password = null;
     public ?string $password_confirmation = null;
-    public bool $modal = false;
 
     public function render(): View
     {
         return view('livewire.users.update');
     }
 
+    // Event Listener - Dipanggil dari parent
     #[On('load::user')]
     public function load(User $user): void
     {
-        $this->user = $user;
+        $this->userId = $user->id;
+        $this->name = $user->name;
+        $this->email = $user->email;
+        $this->phone_number = $user->phone_number;
+        $this->department_id = $user->department_id;
+        $this->birthdate = $user->birthdate?->format('Y-m-d');
+        $this->salary = $user->salary;
+        $this->address = $user->address;
+
+        // Get role from Spatie
+        $this->role = $user->getRoleName();
+
         $this->modal = true;
     }
 
@@ -40,33 +66,69 @@ class Update extends Component
             ->toArray();
     }
 
+    #[Computed]
+    public function roles(): array
+    {
+        return Role::orderBy('name')->get()
+            ->map(fn($role) => ['label' => ucfirst($role->name), 'value' => $role->name])
+            ->toArray();
+    }
+
     public function rules(): array
     {
         return [
-            'user.name' => ['required', 'string', 'max:255'],
-            'user.email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->user->id)],
-            'user.role' => ['required', 'in:staff,manager,admin,director'],
-            'user.department_id' => ['nullable', 'exists:departments,id'],
-            'user.phone_number' => ['nullable', 'string', 'max:20'],
-            'user.birthdate' => ['nullable', 'date'],
-            'user.salary' => ['nullable', 'numeric', 'min:0'],
-            'user.address' => ['nullable', 'string'],
-            'password' => ['nullable', 'string', 'min:8', 'confirmed']
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($this->userId)],
+            'role' => ['required', 'string', 'exists:roles,name'],
+            'department_id' => ['nullable', 'exists:departments,id'],
+            'phone_number' => ['nullable', 'string', 'max:20'],
+            'birthdate' => ['nullable', 'date'],
+            'salary' => ['nullable', 'numeric', 'min:0'],
+            'address' => ['nullable', 'string'],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
         ];
     }
 
     public function save(): void
     {
-        $this->validate();
+        $validated = $this->validate();
 
-        if ($this->password) {
-            $this->user->password = bcrypt($this->password);
+        $user = User::findOrFail($this->userId);
+
+        $user->update([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone_number' => $validated['phone_number'],
+            'department_id' => $validated['department_id'],
+            'birthdate' => $validated['birthdate'],
+            'salary' => $validated['salary'],
+            'address' => $validated['address'],
+        ]);
+
+        // Update password jika diisi
+        if (!empty($validated['password'])) {
+            $user->password = bcrypt($validated['password']);
+            $user->save();
         }
-        
-        $this->user->save();
+
+        // Sync role using Spatie
+        $user->syncRoles([$validated['role']]);
 
         $this->dispatch('updated');
-        $this->resetExcept('user');
-        $this->success('Data karyawan berhasil diperbarui');
+        $this->reset();
+
+        $this->toast()
+            ->success('Berhasil!', 'Data karyawan berhasil diperbarui')
+            ->send();
+    }
+
+    // Helper untuk get user name (untuk title modal)
+    #[Computed]
+    public function userName(): ?string
+    {
+        if (!$this->userId)
+            return null;
+
+        return User::find($this->userId)?->name;
     }
 }

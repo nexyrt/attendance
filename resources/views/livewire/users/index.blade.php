@@ -29,32 +29,39 @@
                 </div>
             @endinteract
 
-            {{-- Role Badge --}}
+            {{-- Role Badge - Updated to use Spatie --}}
             @interact('column_role', $row)
-                <x-badge :color="match ($row->role) {
-                    'director' => 'purple',
-                    'admin' => 'red',
-                    'manager' => 'blue',
-                    'staff' => 'green',
-                    default => 'gray',
-                }" :text="match ($row->role) {
-                    'director' => 'Director',
-                    'admin' => 'Admin',
-                    'manager' => 'Manager',
-                    'staff' => 'Staff',
-                    default => ucfirst($row->role),
-                }" />
+                @php
+                    $roleName = $row->getRoleName();
+                @endphp
+                @if ($roleName)
+                    <x-badge :color="match ($roleName) {
+                        'director' => 'purple',
+                        'admin' => 'red',
+                        'manager' => 'blue',
+                        'staff' => 'green',
+                        default => 'gray',
+                    }" :text="match ($roleName) {
+                        'director' => 'Director',
+                        'admin' => 'Admin',
+                        'manager' => 'Manager',
+                        'staff' => 'Staff',
+                        default => ucfirst($roleName),
+                    }" />
+                @else
+                    <x-badge color="gray" text="No Role" />
+                @endif
             @endinteract
 
-            {{-- Department Info --}}
+            {{-- Department Info - Updated department names --}}
             @interact('column_department', $row)
                 @if ($row->department)
                     <div class="flex items-center space-x-2">
                         <div
                             class="w-3 h-3 rounded-full {{ match ($row->department->name) {
                                 'Digital Marketing' => 'bg-blue-500',
-                                'Sydital' => 'bg-green-500',
-                                'Detax' => 'bg-yellow-500',
+                                'Sistem Digital' => 'bg-green-500',
+                                'Administrasi Pajak' => 'bg-yellow-500',
                                 'HR' => 'bg-purple-500',
                                 default => 'bg-gray-500',
                             } }}">
@@ -121,7 +128,7 @@
 
                     {{-- Delete Selected --}}
                     <x-button wire:click="confirmBulkDelete" size="sm" color="red" icon="trash"
-                        class="whitespace-nowrap">
+                        loading="confirmBulkDelete" class="whitespace-nowrap">
                         Hapus
                     </x-button>
 

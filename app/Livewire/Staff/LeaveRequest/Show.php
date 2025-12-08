@@ -9,23 +9,27 @@ use Livewire\Component;
 
 class Show extends Component
 {
-    public ?LeaveRequest $leaveRequest = null;
     public bool $modal = false;
+    public ?int $leaveRequestId = null;
 
     public function render(): View
     {
         return view('livewire.staff.leave-request.show');
     }
 
-    #[On('load::leave-request')]
+    #[On('show::leave-request')]
     public function load(LeaveRequest $leaveRequest): void
     {
-        $this->leaveRequest = $leaveRequest->load(['user', 'manager', 'hr', 'director']);
+        $this->leaveRequestId = $leaveRequest->id;
         $this->modal = true;
     }
 
-    public function print(): void
+    public function getLeaveRequestProperty(): ?LeaveRequest
     {
-        $this->dispatch('print-leave-request', ['id' => $this->leaveRequest->id]);
+        if (!$this->leaveRequestId)
+            return null;
+
+        return LeaveRequest::with(['user', 'manager', 'hr', 'director'])
+            ->find($this->leaveRequestId);
     }
 }

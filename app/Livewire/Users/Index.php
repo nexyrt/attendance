@@ -2,7 +2,7 @@
 
 namespace App\Livewire\Users;
 
-use Tallstackui\Traits\Interactions;
+use App\Livewire\Traits\Alert;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -15,7 +15,7 @@ use Livewire\WithPagination;
 
 class Index extends Component
 {
-    use WithPagination, Interactions;
+    use WithPagination, Alert;
 
     public ?int $quantity = 10;
     public ?string $search = null;
@@ -25,7 +25,7 @@ class Index extends Component
     public array $headers = [
         ['index' => 'name', 'label' => 'Nama'],
         ['index' => 'email', 'label' => 'Email'],
-        ['index' => 'role', 'label' => 'Role'],
+        ['index' => 'role', 'label' => 'Role', 'sortable' => false],
         ['index' => 'department', 'label' => 'Departemen', 'sortable' => false],
         ['index' => 'created_at', 'label' => 'Bergabung'],
         ['index' => 'action', 'sortable' => false],
@@ -39,21 +39,28 @@ class Index extends Component
     #[Computed]
     public function rows(): LengthAwarePaginator
     {
-        return User::with('department')
+        return User::with(['department', 'roles'])
             ->whereNotIn('id', [Auth::id()])
-            ->when($this->search, fn (Builder $query) => 
-                $query->where(function($q) {
-                    $q->whereAny(['name', 'email'], 'like', '%'.trim($this->search).'%')
-                      ->orWhereHas('department', fn($dept) => 
-                          $dept->where('name', 'like', '%'.trim($this->search).'%')
-                      );
+            ->when(
+                $this->search,
+                fn(Builder $query) =>
+                $query->where(function ($q) {
+                    $q->whereAny(['name', 'email'], 'like', '%' . trim($this->search) . '%')
+                        ->orWhereHas(
+                            'department',
+                            fn($dept) =>
+                            $dept->where('name', 'like', '%' . trim($this->search) . '%')
+                        );
                 })
             )
-            ->when($this->sort['column'] === 'department', fn (Builder $query) =>
+            ->when(
+                $this->sort['column'] === 'department',
+                fn(Builder $query) =>
                 $query->leftJoin('departments', 'users.department_id', '=', 'departments.id')
-                      ->orderBy('departments.name', $this->sort['direction'])
-                      ->select('users.*')
-            , fn (Builder $query) => 
+                    ->orderBy('departments.name', $this->sort['direction'])
+                    ->select('users.*')
+                ,
+                fn(Builder $query) =>
                 $query->orderBy($this->sort['column'], $this->sort['direction'])
             )
             ->paginate($this->quantity)
@@ -63,10 +70,15 @@ class Index extends Component
     #[Renderless]
     public function confirmBulkDelete(): void
     {
-        if (empty($this->selected)) return;
+        if (empty($this->selected)) {
+            $this->warning('Tidak ada karyawan yang dipilih');
+            return;
+        }
 
         $count = count($this->selected);
-        $this->question("Hapus {$count} karyawan?", "Data karyawan yang dihapus tidak dapat dikembalikan.")
+
+        $this->dialog()
+            ->question("Hapus {$count} karyawan?", "Data karyawan yang dihapus tidak dapat dikembalikan.")
             ->confirm(method: 'bulkDelete')
             ->cancel()
             ->send();
@@ -74,21 +86,32 @@ class Index extends Component
 
     public function bulkDelete(): void
     {
-        if (empty($this->selected)) return;
+        if (empty($this->selected))
+            return;
 
         $count = count($this->selected);
         User::whereIn('id', $this->selected)->delete();
-        
+
         $this->selected = [];
         $this->resetPage();
-        $this->success("{$count} karyawan berhasil dihapus");
+
+        $this->dialog()
+            ->success('Berhasil!', "{$count} karyawan berhasil dihapus")
+            ->send();
     }
 
     public function exportSelected(): void
     {
-        if (empty($this->selected)) return;
+        if (empty($this->selected)) {
+            $this->warning('Tidak ada karyawan yang dipilih');
+            return;
+        }
 
         $count = count($this->selected);
-        $this->success("Export {$count} karyawan sedang diproses");
+
+        // TODO: Implement actual export logic
+        $this->toast()
+            ->info('Export Diproses', "Export {$count} karyawan sedang diproses")
+            ->send();
     }
 }

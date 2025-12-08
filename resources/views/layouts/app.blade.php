@@ -83,7 +83,7 @@
                 @endif
 
                 {{-- Manager Only --}}
-                @if (auth()->user()->hasAnyPermission(['attendance.view-team', 'leave-requests.view-pending']))
+                @if (auth()->user()->hasRole('manager'))
                     <x-side-bar.separator text="Team Management" />
 
                     @can('attendance.view-team')
