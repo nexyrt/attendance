@@ -94,7 +94,7 @@
 </x-card>
 
 {{-- Event Detail Modal --}}
-<x-modal wire:model="eventModal" size="lg" center>
+<x-modal wire="eventModal" size="lg" center>
     @if ($selectedEvent)
         <x-slot:title>
             <div class="flex items-center gap-4 my-3">
