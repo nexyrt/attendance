@@ -37,19 +37,13 @@ class User extends Authenticatable
         'salary' => 'decimal:2',
     ];
 
-    protected static function boot()
-    {
-        parent::boot();
+    // ============================================================
+    // RELATIONSHIPS
+    // ============================================================
 
-        static::created(function ($user) {
-            $user->initializeYearlyLeaveBalance();
-        });
-    }
-
-    // Relationships
     public function attendances()
     {
-        return $this->hasMany(Attendance::class, 'user_id');
+        return $this->hasMany(Attendance::class);
     }
 
     public function department()
@@ -62,11 +56,6 @@ class User extends Authenticatable
         return $this->hasMany(LeaveBalance::class);
     }
 
-    public function leaveBalance()
-    {
-        return $this->hasOne(LeaveBalance::class);
-    }
-
     public function leaveRequests()
     {
         return $this->hasMany(LeaveRequest::class);
@@ -77,75 +66,14 @@ class User extends Authenticatable
         return $this->hasMany(LeaveRequest::class, 'approved_by');
     }
 
-    public function currentLeaveBalance()
+    public function salaryHistories()
     {
-        return $this->leaveBalances()
-            ->where('year', now()->year)
-            ->first();
-    }
-
-    public function initializeYearlyLeaveBalance($totalBalance = 12)
-    {
-        return $this->leaveBalances()->create([
-            'year' => now()->year,
-            'total_balance' => $totalBalance,
-            'used_balance' => 0,
-            'remaining_balance' => $totalBalance
-        ]);
+        return $this->hasMany(SalaryHistory::class);
     }
 
     // ============================================================
-    // SPATIE PERMISSION HELPER METHODS
+    // HELPER METHODS
     // ============================================================
-
-    /**
-     * Get the user's primary role name
-     * Returns the first role name or null if no roles assigned
-     */
-    public function getRoleName(): ?string
-    {
-        return $this->roles->first()?->name;
-    }
-
-    /**
-     * Get all role names as array
-     */
-    public function getRoleNames(): array
-    {
-        return $this->roles->pluck('name')->toArray();
-    }
-
-    /**
-     * Check if user is staff
-     */
-    public function isStaff(): bool
-    {
-        return $this->hasRole('staff');
-    }
-
-    /**
-     * Check if user is manager
-     */
-    public function isManager(): bool
-    {
-        return $this->hasRole('manager');
-    }
-
-    /**
-     * Check if user is admin
-     */
-    public function isAdmin(): bool
-    {
-        return $this->hasRole('admin');
-    }
-
-    /**
-     * Check if user is director
-     */
-    public function isDirector(): bool
-    {
-        return $this->hasRole('director');
-    }
 
     /**
      * Get user initials for avatar

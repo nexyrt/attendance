@@ -4,26 +4,36 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\PrintController;
 
-// Livewire Components - Global
+// Livewire Components
 use App\Livewire\User\Profile;
 use App\Livewire\Attendance\CheckIn;
-use App\Livewire\Staff\Dashboard\Index as StaffDashboard;
-
-// Livewire Components - Staff
-use App\Livewire\Staff\Attendance\Index as StaffAttendance;
-use App\Livewire\Staff\LeaveRequest\Index as StaffLeaveIndex;
-use App\Livewire\Staff\LeaveRequest\Create as StaffLeaveCreate;
-
-// Livewire Components - Manager
-use App\Livewire\Manager\TeamAttendance\Index as ManagerTeamAttendance;
-
-// Livewire Components - Admin & Director
+use App\Livewire\Attendance\MyAttendance;
+use App\Livewire\Attendance\TeamAttendance\Index as TeamAttendanceIndex;
+use App\Livewire\Attendance\TeamAttendance\Analytics as TeamAttendanceAnalytics;
+use App\Livewire\Attendance\AllAttendance\Index as AllAttendanceIndex;
+use App\Livewire\Dashboard\StaffDashboard;
+use App\Livewire\Dashboard\ManagerDashboard;
+use App\Livewire\Dashboard\AdminDashboard;
+use App\Livewire\Dashboard\DirectorDashboard;
+use App\Livewire\LeaveRequests\MyLeaves\Index as MyLeavesIndex;
+use App\Livewire\LeaveRequests\MyLeaves\Create as MyLeavesCreate;
+use App\Livewire\LeaveRequests\Approvals\Index as LeaveApprovalsIndex;
 use App\Livewire\Users\Index as UsersIndex;
-use App\Livewire\OfficeManagement\Index as OfficeManagementIndex;
+use App\Livewire\OfficeLocations\Index as OfficeLocationsIndex;
+use App\Livewire\Schedule\Index as ScheduleIndex;
 
 Route::get('/', function () {
     if (Auth::check()) {
-        return redirect()->route('dashboard');
+        $user = auth()->user();
+
+        $route = match (true) {
+            $user->hasRole('director') => 'dashboard.director',
+            $user->hasRole('admin') => 'dashboard.admin',
+            $user->hasRole('manager') => 'dashboard.manager',
+            default => 'dashboard.staff'
+        };
+
+        return redirect()->route($route);
     }
     return redirect()->route('login');
 });
@@ -31,12 +41,29 @@ Route::get('/', function () {
 Route::middleware(['auth'])->group(function () {
 
     // ==================================================
-    // GLOBAL ROUTES - All authenticated users
+    // DASHBOARD - Role-specific routes
     // ==================================================
-    Route::middleware(['can:dashboard.view'])->group(function () {
-        Route::get('/dashboard', StaffDashboard::class)->name('dashboard');
+    Route::middleware(['can:dashboard.view'])->prefix('dashboard')->group(function () {
+        Route::get('/staff', StaffDashboard::class)
+            ->middleware('role:staff')
+            ->name('dashboard.staff');
+
+        Route::get('/manager', ManagerDashboard::class)
+            ->middleware('role:manager')
+            ->name('dashboard.manager');
+
+        Route::get('/admin', AdminDashboard::class)
+            ->middleware('role:admin')
+            ->name('dashboard.admin');
+
+        Route::get('/director', DirectorDashboard::class)
+            ->middleware('role:director')
+            ->name('dashboard.director');
     });
 
+    // ==================================================
+    // GLOBAL ROUTES
+    // ==================================================
     Route::get('/user/profile', Profile::class)->name('user.profile');
 
     Route::middleware(['can:attendance.check-in'])->group(function () {
@@ -44,80 +71,52 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // ==================================================
-    // STAFF LEVEL - Staff permissions
+    // ATTENDANCE MODULE
     // ==================================================
-    Route::middleware(['can:attendance.view-own'])->prefix('staff')->name('staff.')->group(function () {
-        Route::get('/attendance', StaffAttendance::class)->name('attendance');
+    Route::prefix('attendance')->name('attendance.')->group(function () {
+        Route::middleware(['can:attendance.view-own'])->group(function () {
+            Route::get('/my', MyAttendance::class)->name('my');
+        });
+
+        Route::middleware(['can:attendance.view-team'])->group(function () {
+            Route::get('/team', TeamAttendanceIndex::class)->name('team');
+            Route::get('/team/analytics', TeamAttendanceAnalytics::class)->name('team.analytics');
+        });
+
+        Route::middleware(['can:attendance.view-all'])->group(function () {
+            Route::get('/all', AllAttendanceIndex::class)->name('all');
+        });
     });
 
-    Route::middleware(['can:leave-requests.view-own'])->prefix('staff')->name('staff.')->group(function () {
-        Route::prefix('leave-requests')->name('leave-requests.')->group(function () {
-            Route::get('/', StaffLeaveIndex::class)->name('index');
-            Route::get('/create', StaffLeaveCreate::class)->name('create');
+    // ==================================================
+    // LEAVE REQUESTS MODULE
+    // ==================================================
+    Route::prefix('leave-requests')->name('leave-requests.')->group(function () {
+        Route::middleware(['can:leave-requests.view-own'])->prefix('my')->name('my.')->group(function () {
+            Route::get('/', MyLeavesIndex::class)->name('index');
+            Route::get('/create', MyLeavesCreate::class)->name('create');
+            Route::get('/{leaveRequest}/print', [PrintController::class, 'leaveRequest'])->name('print');
+        });
+
+        Route::middleware(['can:leave-requests.view-pending'])->prefix('approvals')->name('approvals.')->group(function () {
+            Route::get('/', LeaveApprovalsIndex::class)->name('index');
             Route::get('/{leaveRequest}/print', [PrintController::class, 'leaveRequest'])->name('print');
         });
     });
 
     // ==================================================
-    // MANAGER LEVEL - Manager permissions
-    // ==================================================
-    Route::middleware(['can:attendance.view-team'])->prefix('manager')->name('manager.')->group(function () {
-        Route::get('/team-attendance', ManagerTeamAttendance::class)->name('team-attendance');
-        Route::get('/team-attendance/analytics', \App\Livewire\Manager\TeamAttendance\Analytics::class)->name('team-attendance.analytics');
-    });
-
-    Route::middleware(['can:attendance.view-all'])->prefix('manager')->name('manager.')->group(function () {
-        Route::get('/attendance', \App\Livewire\Director\Attendance\Index::class)->name('attendance');
-    });
-
-    Route::middleware(['can:leave-requests.view-pending'])->prefix('manager')->name('manager.')->group(function () {
-        Route::prefix('leave-requests')->name('leave-requests.')->group(function () {
-            Route::get('/', \App\Livewire\Manager\LeaveRequest\Index::class)->name('index');
-            Route::get('/{leaveRequest}/print', [PrintController::class, 'leaveRequest'])->name('print');
-        });
-    });
-
-    // ==================================================
-    // ADMIN LEVEL - Admin permissions
-    // ==================================================
-    Route::middleware(['can:attendance.view-all'])->prefix('admin')->name('admin.')->group(function () {
-        Route::get('/attendance', \App\Livewire\Director\Attendance\Index::class)->name('attendance');
-    });
-
-    Route::middleware(['can:leave-requests.view-pending'])->prefix('admin')->name('admin.')->group(function () {
-        Route::prefix('leave-requests')->name('leave-requests.')->group(function () {
-            Route::get('/', \App\Livewire\Admin\LeaveRequest\Index::class)->name('index');
-            Route::get('/{leaveRequest}/print', [PrintController::class, 'leaveRequest'])->name('print');
-        });
-    });
-
-    // ==================================================
-    // DIRECTOR LEVEL - Director permissions
-    // ==================================================
-    Route::middleware(['can:attendance.view-all'])->prefix('director')->name('director.')->group(function () {
-        Route::get('/attendance', \App\Livewire\Director\Attendance\Index::class)->name('attendance');
-    });
-
-    Route::middleware(['can:leave-requests.view-pending'])->prefix('director')->name('director.')->group(function () {
-        Route::prefix('leave-requests')->name('leave-requests.')->group(function () {
-            Route::get('/', \App\Livewire\Director\LeaveRequest\Index::class)->name('index');
-            Route::get('/{leaveRequest}/print', [PrintController::class, 'leaveRequest'])->name('print');
-        });
-    });
-
-    // ==================================================
-    // SHARED MANAGEMENT - Admin, Director & Manager
+    // MANAGEMENT MODULES - Manager/Admin/Director
     // ==================================================
     Route::middleware(['can:users.view'])->group(function () {
         Route::get('/users', UsersIndex::class)->name('users.index');
     });
 
     Route::middleware(['can:schedule.view'])->group(function () {
-        Route::get('/schedule', \App\Livewire\Schedule\Index::class)->name('schedule.index');
+        Route::get('/schedule', ScheduleIndex::class)->name('schedule.index');
     });
 
-    Route::middleware(['can:office-locations.view'])->prefix('office-management')->name('office-management.')->group(function () {
-        Route::get('/', OfficeManagementIndex::class)->name('index');
+    Route::middleware(['can:office-locations.view'])->group(function () {
+        Route::get('/office-locations', OfficeLocationsIndex::class)->name('office-locations.index');
     });
 });
 

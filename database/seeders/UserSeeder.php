@@ -18,8 +18,8 @@ class UserSeeder extends Seeder
 
         $departments = Department::all();
 
-        // 1. Administrator (Admin - HR Department)
-        $admin = User::create([
+        // 1. Administrator (HR Department)
+        User::create([
             'name' => 'Administrator',
             'email' => 'admin@gmail.com',
             'password' => Hash::make('password'),
@@ -29,11 +29,10 @@ class UserSeeder extends Seeder
             'address' => 'Jl. Admin Street No. 1, Jakarta',
             'department_id' => $departments->where('name', 'HR')->first()->id,
         ]);
-        $admin->assignRole('admin');
-        $this->command->line('  ✓ Created: Administrator (admin@gmail.com) - Admin');
+        $this->command->line('  ✓ Created: Administrator (admin@gmail.com)');
 
         // 2. Director (No Department)
-        $director = User::create([
+        User::create([
             'name' => 'Budi Santoso',
             'email' => 'direktur@gmail.com',
             'password' => Hash::make('password'),
@@ -43,11 +42,10 @@ class UserSeeder extends Seeder
             'address' => 'Jl. Director Avenue No. 5, Jakarta',
             'department_id' => null,
         ]);
-        $director->assignRole('director');
-        $this->command->line('  ✓ Created: Budi Santoso (direktur@gmail.com) - Director');
+        $this->command->line('  ✓ Created: Budi Santoso (direktur@gmail.com)');
 
         // 3. Manager (Digital Marketing Department)
-        $manager = User::create([
+        User::create([
             'name' => 'Ahmad Fauzi',
             'email' => 'manager@gmail.com',
             'password' => Hash::make('password'),
@@ -57,11 +55,10 @@ class UserSeeder extends Seeder
             'address' => 'Jl. Marketing Street No. 8, Jakarta',
             'department_id' => $departments->where('name', 'Digital Marketing')->first()->id,
         ]);
-        $manager->assignRole('manager');
-        $this->command->line('  ✓ Created: Ahmad Fauzi (manager@gmail.com) - Manager');
+        $this->command->line('  ✓ Created: Ahmad Fauzi (manager@gmail.com)');
 
         // 4. Staff 1 (Digital Marketing Department)
-        $staff1 = User::create([
+        User::create([
             'name' => 'Dewi Lestari',
             'email' => 'staff@gmail.com',
             'password' => Hash::make('password'),
@@ -71,11 +68,10 @@ class UserSeeder extends Seeder
             'address' => 'Jl. Staff Residence No. 101, Jakarta',
             'department_id' => $departments->where('name', 'Digital Marketing')->first()->id,
         ]);
-        $staff1->assignRole('staff');
-        $this->command->line('  ✓ Created: Dewi Lestari (staff@gmail.com) - Staff');
+        $this->command->line('  ✓ Created: Dewi Lestari (staff@gmail.com)');
 
         // 5. Staff 2 (Sistem Digital Department)
-        $staff2 = User::create([
+        User::create([
             'name' => 'Arif Hidayat',
             'email' => 'arif@gmail.com',
             'password' => Hash::make('password'),
@@ -85,10 +81,10 @@ class UserSeeder extends Seeder
             'address' => 'Jl. Sistem Digital Street No. 201, Jakarta',
             'department_id' => $departments->where('name', 'Sistem Digital')->first()->id,
         ]);
-        $staff2->assignRole('staff');
-        $this->command->line('  ✓ Created: Arif Hidayat (arif@gmail.com) - Staff');
+        $this->command->line('  ✓ Created: Arif Hidayat (arif@gmail.com)');
 
         $this->command->newLine();
         $this->command->info('✅ Created 5 users successfully!');
+        $this->command->line('   Roles will be assigned by RolePermissionSeeder');
     }
 }

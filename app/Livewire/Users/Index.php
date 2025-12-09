@@ -75,10 +75,23 @@ class Index extends Component
             return;
         }
 
+        // Remove current user from selection (safety check)
+        $this->selected = array_diff($this->selected, [Auth::id()]);
+
+        if (empty($this->selected)) {
+            $this->dialog()
+                ->error('Tidak Dapat Dihapus', 'Anda tidak dapat menghapus akun Anda sendiri.')
+                ->send();
+            return;
+        }
+
         $count = count($this->selected);
 
         $this->dialog()
-            ->question("Hapus {$count} karyawan?", "Data karyawan yang dihapus tidak dapat dikembalikan.")
+            ->question(
+                "Hapus {$count} karyawan?",
+                "Data karyawan akan dihapus secara permanen dan tidak dapat dikembalikan."
+            )
             ->confirm(method: 'bulkDelete')
             ->cancel()
             ->send();
@@ -89,14 +102,19 @@ class Index extends Component
         if (empty($this->selected))
             return;
 
+        // Safety check: remove current user
+        $this->selected = array_diff($this->selected, [Auth::id()]);
+
         $count = count($this->selected);
-        User::whereIn('id', $this->selected)->delete();
+
+        // Force delete (permanent) - menghapus dari database fisik
+        User::whereIn('id', $this->selected)->forceDelete();
 
         $this->selected = [];
         $this->resetPage();
 
         $this->dialog()
-            ->success('Berhasil!', "{$count} karyawan berhasil dihapus")
+            ->success('Berhasil!', "{$count} karyawan berhasil dihapus secara permanen")
             ->send();
     }
 

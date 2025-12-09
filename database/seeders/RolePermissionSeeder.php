@@ -29,7 +29,10 @@ class RolePermissionSeeder extends Seeder
         // Step 3: Assign Permissions to Roles
         $this->assignPermissionsToRoles();
 
-        // Step 4: Sync existing users with roles
+        // Step 4: Assign specific users to roles
+        $this->assignSpecificUsers();
+
+        // Step 5: Sync remaining users
         $this->syncExistingUsers();
 
         $this->command->newLine();
@@ -109,24 +112,19 @@ class RolePermissionSeeder extends Seeder
     {
         $this->command->info('📋 Assigning Permissions to Roles...');
 
-        // ============================================================
         // STAFF
-        // ============================================================
         $staff = Role::findByName('staff');
-        $staffPermissions = [
+        $staff->syncPermissions([
             'dashboard.view',
             'attendance.check-in',
             'attendance.view-own',
             'leave-requests.view-own',
-        ];
-        $staff->syncPermissions($staffPermissions);
-        $this->command->line('  ✓ Staff: ' . count($staffPermissions) . ' permissions');
+        ]);
+        $this->command->line('  ✓ Staff: ' . $staff->permissions->count() . ' permissions');
 
-        // ============================================================
         // MANAGER
-        // ============================================================
         $manager = Role::findByName('manager');
-        $managerPermissions = [
+        $manager->syncPermissions([
             'dashboard.view',
             'attendance.check-in',
             'attendance.view-team',
@@ -134,15 +132,12 @@ class RolePermissionSeeder extends Seeder
             'users.view',
             'schedule.view',
             'office-locations.view',
-        ];
-        $manager->syncPermissions($managerPermissions);
-        $this->command->line('  ✓ Manager: ' . count($managerPermissions) . ' permissions');
+        ]);
+        $this->command->line('  ✓ Manager: ' . $manager->permissions->count() . ' permissions');
 
-        // ============================================================
         // ADMIN
-        // ============================================================
         $admin = Role::findByName('admin');
-        $adminPermissions = [
+        $admin->syncPermissions([
             'dashboard.view',
             'attendance.check-in',
             'attendance.view-all',
@@ -150,26 +145,54 @@ class RolePermissionSeeder extends Seeder
             'users.view',
             'schedule.view',
             'office-locations.view',
-        ];
-        $admin->syncPermissions($adminPermissions);
-        $this->command->line('  ✓ Admin: ' . count($adminPermissions) . ' permissions');
+        ]);
+        $this->command->line('  ✓ Admin: ' . $admin->permissions->count() . ' permissions');
 
-        // ============================================================
         // DIRECTOR - Full Access
-        // ============================================================
         $director = Role::findByName('director');
-        $directorPermissions = Permission::all();
-        $director->syncPermissions($directorPermissions);
-        $this->command->line("  ✓ Director: {$directorPermissions->count()} permissions (Full Access)");
+        $director->syncPermissions(Permission::all());
+        $this->command->line("  ✓ Director: {$director->permissions->count()} permissions (Full Access)");
     }
 
     /**
-     * Sync existing users with roles
-     * Check semua user, assign role 'staff' jika belum punya role
+     * Assign specific users to roles based on email
+     */
+    private function assignSpecificUsers(): void
+    {
+        $this->command->info('📋 Assigning Specific Users...');
+
+        $specificUsers = [
+            'admin@gmail.com' => 'admin',
+            'director@gmail.com' => 'director',
+            'manager@gmail.com' => 'manager',
+            'staff@gmail.com' => 'staff',
+        ];
+
+        $assignedCount = 0;
+
+        foreach ($specificUsers as $email => $roleName) {
+            $user = User::where('email', $email)->first();
+
+            if ($user) {
+                $user->syncRoles([$roleName]);
+                $this->command->line("  + {$email} → {$roleName}");
+                $assignedCount++;
+            }
+        }
+
+        if ($assignedCount > 0) {
+            $this->command->info("  ✓ Assigned {$assignedCount} specific user(s)");
+        } else {
+            $this->command->warn('  ⚠ No specific users found');
+        }
+    }
+
+    /**
+     * Sync remaining users without roles
      */
     private function syncExistingUsers(): void
     {
-        $this->command->info('📋 Syncing Existing Users...');
+        $this->command->info('📋 Syncing Remaining Users...');
 
         $totalUsers = User::count();
 
@@ -185,8 +208,6 @@ class RolePermissionSeeder extends Seeder
 
         if ($usersWithoutRoles->isEmpty()) {
             $this->command->line('  ✓ All users have roles assigned');
-
-            // Show role distribution
             $this->showRoleDistribution();
             return;
         }
@@ -202,8 +223,6 @@ class RolePermissionSeeder extends Seeder
         }
 
         $this->command->info("  ✓ Assigned 'staff' role to {$assignedCount} user(s)");
-
-        // Show role distribution after assignment
         $this->showRoleDistribution();
     }
 

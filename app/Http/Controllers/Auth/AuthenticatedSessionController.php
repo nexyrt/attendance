@@ -18,10 +18,17 @@ class AuthenticatedSessionController
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
-
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        $user = auth()->user();
+        $route = match (true) {
+            $user->hasRole('director') => 'dashboard.director',
+            $user->hasRole('admin') => 'dashboard.admin',
+            $user->hasRole('manager') => 'dashboard.manager',
+            default => 'dashboard.staff'
+        };
+
+        return redirect()->intended(route($route, absolute: false));
     }
 
     public function destroy(Request $request): RedirectResponse

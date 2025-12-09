@@ -17,7 +17,7 @@
                     <div
                         class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                         <span class="text-white font-semibold text-sm">
-                            {{ strtoupper(substr($row->name, 0, 2)) }}
+                            {{ $row->getInitials() }}
                         </span>
                     </div>
                     <div>
@@ -29,31 +29,31 @@
                 </div>
             @endinteract
 
-            {{-- Role Badge - Updated to use Spatie --}}
+            {{-- Role Badge - Direct Spatie --}}
             @interact('column_role', $row)
                 @php
-                    $roleName = $row->getRoleName();
+                    $role = $row->roles->first();
                 @endphp
-                @if ($roleName)
-                    <x-badge :color="match ($roleName) {
+                @if ($role)
+                    <x-badge :color="match ($role->name) {
                         'director' => 'purple',
                         'admin' => 'red',
                         'manager' => 'blue',
                         'staff' => 'green',
                         default => 'gray',
-                    }" :text="match ($roleName) {
+                    }" :text="match ($role->name) {
                         'director' => 'Director',
                         'admin' => 'Admin',
                         'manager' => 'Manager',
                         'staff' => 'Staff',
-                        default => ucfirst($roleName),
+                        default => ucfirst($role->name),
                     }" />
                 @else
                     <x-badge color="gray" text="No Role" />
                 @endif
             @endinteract
 
-            {{-- Department Info - Updated department names --}}
+            {{-- Department Info --}}
             @interact('column_department', $row)
                 @if ($row->department)
                     <div class="flex items-center space-x-2">

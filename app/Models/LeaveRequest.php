@@ -79,6 +79,8 @@ class LeaveRequest extends Model
         return $this->belongsTo(User::class, 'director_id');
     }
 
+    // Helper Methods
+
     public function isPending(): bool
     {
         return in_array($this->status, [

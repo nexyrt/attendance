@@ -17,7 +17,7 @@ class Delete extends Component
     {
         return <<<'HTML'
         <div>
-            <x-button.circle icon="trash" color="red" wire:click="confirm" />
+            <x-button.circle icon="trash" color="red" size="sm" wire:click="confirm" title="Hapus" />
         </div>
         HTML;
     }
@@ -25,7 +25,11 @@ class Delete extends Component
     #[Renderless]
     public function confirm(): void
     {
-        $this->question()
+        $this->dialog()
+            ->question(
+                "Hapus {$this->user->name}?",
+                "Data karyawan akan dihapus secara permanen dan tidak dapat dikembalikan."
+            )
             ->confirm(method: 'delete')
             ->cancel()
             ->send();
@@ -33,10 +37,23 @@ class Delete extends Component
 
     public function delete(): void
     {
-        $this->user->delete();
+        // Safety check: prevent self-delete
+        if ($this->user->id === auth()->id()) {
+            $this->dialog()
+                ->error('Tidak Dapat Dihapus', 'Anda tidak dapat menghapus akun Anda sendiri.')
+                ->send();
+            return;
+        }
+
+        $userName = $this->user->name;
+
+        // Force delete (permanent) - menghapus dari database fisik
+        $this->user->forceDelete();
 
         $this->dispatch('deleted');
 
-        $this->success();
+        $this->dialog()
+            ->success('Berhasil!', "{$userName} telah dihapus secara permanen")
+            ->send();
     }
 }
