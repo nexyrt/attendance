@@ -5,7 +5,7 @@ namespace App\Livewire\Dashboard;
 use App\Models\Attendance;
 use App\Models\LeaveBalance;
 use App\Models\ScheduleException;
-use FontLib\TrueType\Collection;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Computed;
@@ -14,16 +14,17 @@ use Livewire\Component;
 
 class StaffDashboard extends Component
 {
-    public function render(): View
-    {
-        return view('livewire.dashboard.staff-dashboard');
-    }
-
     public $selectedDate;
+    public $selectedEvent = null;
+    public bool $eventModal = false;
 
     public function mount()
     {
         $this->selectedDate = now();
+    }
+    public function render(): View
+    {
+        return view('livewire.dashboard.staff-dashboard');
     }
 
     // ============================================================
@@ -163,31 +164,81 @@ class StaffDashboard extends Component
             ->toArray();
     }
 
+    // ============================================================
+    // CALENDAR METHODS
+    // ============================================================
+
     #[Computed]
-    public function attendanceData(): Collection
+    public function calendarData(): array
     {
-        return Attendance::where('user_id', auth()->id())
-            ->whereYear('date', $this->selectedDate->year)
-            ->whereMonth('date', $this->selectedDate->month)
+        $year = $this->selectedDate->year;
+        $month = $this->selectedDate->month;
+
+        $firstDay = Carbon::create($year, $month, 1);
+        $lastDay = $firstDay->copy()->endOfMonth();
+
+        // Get schedule exceptions for current month
+        $scheduleExceptions = ScheduleException::whereYear('date', $year)
+            ->whereMonth('date', $month)
+            ->whereHas('departments', fn($q) => $q->where('departments.id', auth()->user()->department_id))
             ->get()
-            ->keyBy(fn($a) => $a->date->format('Y-m-d'));
+            ->keyBy(fn($se) => $se->date->format('Y-m-d'));
+
+        $daysInMonth = [];
+        for ($day = 1; $day <= $lastDay->day; $day++) {
+            $date = Carbon::create($year, $month, $day);
+            $dateKey = $date->format('Y-m-d');
+
+            $exception = $scheduleExceptions->get($dateKey);
+
+            $daysInMonth[] = [
+                'date' => $date,
+                'day' => $day,
+                'exception' => $exception ? [
+                    'id' => $exception->id,
+                    'title' => $exception->title,
+                    'status' => $exception->status,
+                    'note' => $exception->note,
+                    'start_time' => $exception->start_time?->format('H:i'),
+                    'end_time' => $exception->end_time?->format('H:i'),
+                ] : null,
+                'isToday' => $date->isToday(),
+                'isWeekend' => $date->isWeekend(),
+            ];
+        }
+
+        return [
+            'days' => $daysInMonth,
+            'startDayOfWeek' => $firstDay->dayOfWeek,
+            'monthName' => $firstDay->format('F Y'),
+        ];
     }
 
-    public function getAttendance($date): ?object
+    public function previousMonth(): void
     {
-        if (!$date)
-            return null;
+        $this->selectedDate = $this->selectedDate->subMonth();
+    }
 
-        $key = $date->format('Y-m-d');
-        $attendance = $this->attendanceData->get($key);
+    public function nextMonth(): void
+    {
+        $this->selectedDate = $this->selectedDate->addMonth();
+    }
 
-        if (!$attendance)
-            return null;
+    public function showEventDetail($dayIndex): void
+    {
+        $day = $this->calendarData['days'][$dayIndex] ?? null;
 
-        return (object) [
-            'status' => $attendance->status,
-            'hours' => $attendance->working_hours
-        ];
+        if ($day && $day['exception']) {
+            $this->selectedEvent = $day['exception'];
+            $this->selectedEvent['date'] = $day['date']->format('l, F j, Y');
+            $this->eventModal = true;
+        }
+    }
+
+    public function closeEventModal(): void
+    {
+        $this->eventModal = false;
+        $this->selectedEvent = null;
     }
 
     // ============================================================

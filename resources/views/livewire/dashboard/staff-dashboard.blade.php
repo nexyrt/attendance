@@ -40,6 +40,13 @@
             {{-- CHECK-IN COMPONENT INTEGRATION --}}
             <livewire:attendance.check-in />
 
+
+        </div>
+
+        {{-- CENTER COLUMN - Calendar --}}
+        <div class="lg:col-span-4 space-y-5">
+            @include('livewire.dashboard.partials.calendar-component')
+
             {{-- LEAVE BALANCE WIDGET --}}
             <x-card>
                 <x-slot:header>
@@ -71,22 +78,6 @@
                             </div>
                         </div>
                     @endforeach
-                </div>
-            </x-card>
-        </div>
-
-        {{-- CENTER COLUMN - Calendar --}}
-        <div class="lg:col-span-4">
-            <x-card>
-                <x-slot:header>
-                    <div class="flex items-center gap-2">
-                        <x-icon name="calendar" class="w-5 h-5 text-blue-600" />
-                        <span class="text-base md:text-lg font-semibold">Calendar</span>
-                    </div>
-                </x-slot:header>
-
-                <div class="p-4 md:p-6">
-                    @include('livewire.dashboard.partials.calendar-component')
                 </div>
             </x-card>
         </div>
