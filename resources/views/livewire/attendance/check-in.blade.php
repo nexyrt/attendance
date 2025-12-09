@@ -1,4 +1,35 @@
-<div class="space-y-4" x-data="{
+<div x-data="{
+    currentTime: '{{ now()->format('H:i:s') }}',
+    status: '{{ $this->todayAttendance?->check_in && !$this->todayAttendance?->check_out ? 'checked_in' : ($this->todayAttendance?->check_out ? 'completed' : 'not_started') }}',
+    checkInTime: {{ $this->todayAttendance?->check_in ? "'" . $this->todayAttendance->check_in->format('Y-m-d H:i:s') . "'" : 'null' }},
+    checkOutTime: {{ $this->todayAttendance?->check_out ? "'" . $this->todayAttendance->check_out->format('Y-m-d H:i:s') . "'" : 'null' }},
+    workingHours: '00:00:00',
+
+    updateClock() {
+        setInterval(() => {
+            const now = new Date();
+            this.currentTime = now.toLocaleTimeString('en-US', { hour12: false });
+        }, 1000);
+    },
+
+    updateWorkingHours() {
+        setInterval(() => {
+            if (this.checkInTime) {
+                const checkIn = new Date(this.checkInTime);
+                const checkOut = this.checkOutTime ? new Date(this.checkOutTime) : new Date();
+                const diff = checkOut - checkIn;
+
+                const hours = Math.floor(diff / 3600000);
+                const minutes = Math.floor((diff % 3600000) / 60000);
+                const seconds = Math.floor((diff % 60000) / 1000);
+
+                this.workingHours = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            } else {
+                this.workingHours = '00:00:00';
+            }
+        }, 1000);
+    },
+
     getLocation() {
         if (navigator.geolocation) {
             $wire.set('locationLoading', true);
@@ -26,303 +57,227 @@
             $wire.setLocationError('Geolocation not supported.');
         }
     }
-}" x-init="getLocation()">
+}" x-init="updateClock();
+updateWorkingHours();
+getLocation();"
+    @attendance-updated.window="
+    checkInTime = $event.detail.checkInTime || null;
+    checkOutTime = $event.detail.checkOutTime || null;
+    status = $event.detail.status || 'not_started';
+">
 
-    {{-- Header --}}
-    <div class="text-center py-2">
-        <h1 class="text-xl font-bold text-gray-900 dark:text-white">Attendance</h1>
-        <p class="text-sm  dark:text-gray-400">{{ now()->format('l, M j • H:i') }}</p>
-    </div>
+    {{-- CHECK-IN WIDGET --}}
+    <x-card>
+        <x-slot:header>
+            <div class="flex items-center gap-2">
+                <x-icon name="clock" class="w-5 h-5 text-blue-600" />
+                <span class="text-base md:text-lg font-semibold">Today's Attendance</span>
+            </div>
+        </x-slot:header>
 
-    {{-- Schedule + Status Row --}}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {{-- Today Schedule --}}
-        @if ($this->todaySchedule)
-            <x-card class="p-4">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="font-medium text-gray-900 dark:text-white">{{ $this->todaySchedule['title'] }}
-                            </h3>
-                            @if ($this->todaySchedule['status'] !== 'holiday')
-                                <p class="text-xs ">{{ $this->todaySchedule['start_time'] }} -
-                                    {{ $this->todaySchedule['end_time'] }}</p>
-                            @endif
-                        </div>
-                    </div>
-                    <x-badge :color="$this->todaySchedule['status'] === 'holiday' ? 'red' : 'green'" :text="ucfirst($this->todaySchedule['status'])" xs />
+        <div class="p-4 md:p-6 space-y-4 md:space-y-6">
+            {{-- Current Time --}}
+            <div class="text-center">
+                <div class="text-3xl md:text-5xl font-bold text-gray-900 dark:text-gray-50 tabular-nums"
+                    x-text="currentTime">
+                    {{ now()->format('H:i:s') }}
                 </div>
-            </x-card>
-        @endif
-
-        {{-- Current Status --}}
-        <x-card class="p-4">
-            @if ($this->todayAttendance)
-                @if ($this->todayAttendance->check_in && !$this->todayAttendance->check_out)
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <div
-                                class="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                                <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd"
-                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 class="font-medium text-green-600">Checked In</h3>
-                                <p class="text-xs ">{{ $this->todayAttendance->check_in->format('H:i') }}
-                                </p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <x-badge color="green" :text="ucfirst($this->todayAttendance->status)" xs />
-                            <p class="text-xs text-gray-500 mt-1">
-                                {{ $this->todayAttendance->check_in->diffForHumans(null, true) }}</p>
-                        </div>
-                    </div>
-                @elseif($this->todayAttendance->check_in && $this->todayAttendance->check_out)
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-3">
-                            <div
-                                class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                                <svg class="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd"
-                                        d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" />
-                                </svg>
-                            </div>
-                            <div>
-                                <h3 class="font-medium text-blue-600">Completed</h3>
-                                <p class="text-xs ">{{ $this->todayAttendance->check_in->format('H:i') }} -
-                                    {{ $this->todayAttendance->check_out->format('H:i') }}</p>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <x-badge color="blue" :text="ucfirst($this->todayAttendance->status)" xs />
-                            @if ($this->todayAttendance->working_hours)
-                                <p class="text-xs text-gray-500 mt-1">
-                                    {{ number_format($this->todayAttendance->working_hours, 1) }}h</p>
-                            @endif
-                        </div>
-                    </div>
-                @endif
-            @else
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
-                            <svg class="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="font-medium ">Ready</h3>
-                            <p class="text-xs text-gray-500">Start your workday</p>
-                        </div>
-                    </div>
-                    <x-badge color="gray" text="Not started" xs />
+                <div class="mt-1 md:mt-2 text-xs md:text-sm text-gray-500 dark:text-gray-400">
+                    {{ now()->format('l, F j, Y') }}
                 </div>
-            @endif
-        </x-card>
-    </div>
-
-    {{-- Location & Action Row --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {{-- Location Status --}}
-        <x-card class="p-4">
-            <div class="flex items-center justify-between mb-3">
-                <h4 class="font-medium text-gray-900 dark:text-white">Location</h4>
-                <button x-on:click="getLocation()" class="text-blue-500 text-xs hover:text-blue-700">
-                    Refresh
-                </button>
             </div>
 
-            <div x-show="$wire.locationLoading" class="text-center py-4">
-                <div class="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-2">
-                </div>
-                <p class="text-xs ">Getting location...</p>
+            {{-- Status Badge --}}
+            <div class="flex justify-center">
+                <template x-if="status === 'not_started'">
+                    <x-badge color="gray" class="text-xs md:text-sm">
+                        <x-icon name="clock" class="w-3 h-3 md:w-4 md:h-4 mr-1" />
+                        Not Checked In
+                    </x-badge>
+                </template>
+                <template x-if="status === 'checked_in'">
+                    <x-badge color="green" class="text-xs md:text-sm">
+                        <x-icon name="check-circle" class="w-3 h-3 md:w-4 md:h-4 mr-1" />
+                        Checked In
+                    </x-badge>
+                </template>
+                <template x-if="status === 'completed'">
+                    <x-badge color="blue" class="text-xs md:text-sm">
+                        <x-icon name="check-circle" class="w-3 h-3 md:w-4 md:h-4 mr-1" />
+                        Checked Out
+                    </x-badge>
+                </template>
             </div>
 
-            <div x-show="$wire.locationError" class="text-center py-4">
-                <svg class="w-6 h-6 text-red-500 mx-auto mb-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd"
-                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" />
-                </svg>
-                <p class="text-xs text-red-600 mb-2" x-text="$wire.locationError"></p>
-                <x-button color="red" size="sm" x-on:click="getLocation()">Retry</x-button>
-            </div>
-
-            <div x-show="!$wire.locationLoading && !$wire.locationError">
-                @php
-                    $validOffice = null;
-                    if ($this->latitude && $this->longitude) {
-                        foreach ($this->officeLocations as $office) {
-                            $distance = $this->calculateDistance(
-                                $this->latitude,
-                                $this->longitude,
-                                $office->latitude,
-                                $office->longitude,
-                            );
-                            if ($distance <= $office->radius) {
-                                $validOffice = $office;
-                                break;
-                            }
-                        }
-                    }
-                @endphp
-
-                @if ($validOffice)
-                    <div class="flex items-center space-x-3">
-                        <div
-                            class="w-8 h-8 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                            <svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="font-medium text-green-600">{{ $validOffice->name }}</p>
-                            <p class="text-xs text-gray-500">Within range</p>
-                        </div>
-                    </div>
-                @else
-                    <div class="flex items-center space-x-3">
-                        <div class="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
-                            <svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="font-medium text-red-600">Outside area</p>
-                            <p class="text-xs text-gray-500">Move closer to office</p>
-                        </div>
-                    </div>
-                @endif
-            </div>
-        </x-card>
-
-        {{-- Action Button --}}
-        <x-card class="p-4">
-            <h4 class="font-medium text-gray-900 dark:text-white mb-3">Action</h4>
-
-            @if ($this->canCheckIn)
-                <x-button color="green" class="w-full" wire:click="checkIn" loading="checkIn">
-                    <div class="flex items-center justify-center space-x-2">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                                d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-                        </svg>
-                        <span>Check In</span>
-                    </div>
-                </x-button>
-            @elseif($this->canCheckOut)
-                <x-button color="blue" class="w-full" wire:click="openNotesModal">
-                    <div class="flex items-center justify-center space-x-2">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3z" />
-                        </svg>
-                        <span>Check Out</span>
-                    </div>
-                </x-button>
-            @else
-                <x-button color="gray" class="w-full" disabled>
-                    <div class="flex items-center justify-center space-x-2">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" />
-                        </svg>
-                        <span class="text-sm">
-                            @if ($this->locationLoading)
-                                Getting Location...
-                            @elseif($this->locationError)
-                                Location Error
-                            @elseif(!$this->todaySchedule)
-                                No Schedule
-                            @elseif($this->todaySchedule['status'] === 'holiday')
-                                Holiday
-                            @elseif($this->todayAttendance?->check_in && $this->todayAttendance?->check_out)
-                                Completed
-                            @else
-                                Not Available
-                            @endif
-                        </span>
-                    </div>
-                </x-button>
-            @endif
-
-            <p class="text-xs text-gray-500 text-center mt-2">
-                @if ($this->canCheckIn)
-                    Ensure you're at office location
-                @elseif($this->canCheckOut)
-                    Add notes about your work today
-                @else
-                    Check requirements above
-                @endif
-            </p>
-        </x-card>
-    </div>
-
-    {{-- Office Locations --}}
-    <x-card class="p-4">
-        <div class="flex items-center justify-between mb-3">
-            <h4 class="font-medium text-gray-900 dark:text-white">Office Locations</h4>
-            <x-badge color="blue" :text="count($this->officeLocations)" xs />
-        </div>
-
-        <div class="space-y-2">
-            @foreach ($this->officeLocations as $office)
-                @php
-                    $isInRange = false;
-                    if ($this->latitude && $this->longitude) {
-                        $distance = $this->calculateDistance(
-                            $this->latitude,
-                            $this->longitude,
-                            $office->latitude,
-                            $office->longitude,
-                        );
-                        $isInRange = $distance <= $office->radius;
-                    }
-                @endphp
-
+            {{-- Check-in/out Times --}}
+            <div class="grid grid-cols-2 gap-3 md:gap-4">
                 <div
-                    class="flex items-center justify-between py-2 px-3 border border-gray-200 dark:border-gray-700 rounded-lg {{ $isInRange ? 'bg-green-50 dark:bg-green-900/10 border-green-200' : '' }}">
-                    <div class="flex items-center space-x-3">
-                        <div
-                            class="w-6 h-6 {{ $isInRange ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500' }} rounded-full flex items-center justify-center">
-                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd"
-                                    d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" />
-                            </svg>
-                        </div>
-                        <div>
-                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $office->name }}</p>
-                            @if ($office->address)
-                                <p class="text-xs text-gray-500 truncate">{{ Str::limit($office->address, 30) }}</p>
-                            @endif
-                        </div>
+                    class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 p-3 md:p-4">
+                    <div class="flex items-center gap-2 text-green-600 mb-1">
+                        <x-icon name="arrow-right-on-rectangle" class="w-3 h-3 md:w-4 md:h-4" />
+                        <span class="text-xs md:text-sm font-medium">Check In</span>
                     </div>
-                    <div class="flex items-center space-x-2">
-                        <x-badge :color="$isInRange ? 'green' : 'gray'" :text="$office->radius . 'm'" xs />
-                        @if ($isInRange)
-                            <span class="text-xs text-green-600 font-medium">✓</span>
-                        @endif
+                    <div class="text-base md:text-lg font-bold text-gray-900 dark:text-gray-50"
+                        x-text="checkInTime ? new Date(checkInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'">
+                        --:--
                     </div>
                 </div>
-            @endforeach
+                <div
+                    class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 p-3 md:p-4">
+                    <div class="flex items-center gap-2 text-blue-600 mb-1">
+                        <x-icon name="arrow-left-on-rectangle" class="w-3 h-3 md:w-4 md:h-4" />
+                        <span class="text-xs md:text-sm font-medium">Check Out</span>
+                    </div>
+                    <div class="text-base md:text-lg font-bold text-gray-900 dark:text-gray-50"
+                        x-text="checkOutTime ? new Date(checkOutTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'">
+                        --:--
+                    </div>
+                </div>
+            </div>
+
+            {{-- Working Hours --}}
+            <div
+                class="rounded-lg border-2 border-dashed border-blue-200 dark:border-blue-900 bg-blue-50/30 dark:bg-blue-950/30 p-3 md:p-4">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300">Working
+                        Hours</span>
+                    <x-icon name="clock" class="w-4 h-4 text-blue-600" />
+                </div>
+                <div class="mt-2 text-2xl md:text-3xl font-bold text-blue-600 tabular-nums" x-text="workingHours">
+                    00:00:00
+                </div>
+            </div>
+
+            {{-- Schedule Info --}}
+            @if ($this->todaySchedule)
+                <div
+                    class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 p-3 md:p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <x-icon name="calendar" class="w-4 h-4 text-blue-600" />
+                            <div>
+                                <div class="text-sm font-medium text-gray-900 dark:text-gray-50">
+                                    {{ $this->todaySchedule['title'] }}
+                                </div>
+                                @if ($this->todaySchedule['status'] !== 'holiday')
+                                    <div class="text-xs text-gray-600 dark:text-gray-400">
+                                        {{ $this->todaySchedule['start_time'] }} -
+                                        {{ $this->todaySchedule['end_time'] }}
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                        <x-badge :color="$this->todaySchedule['status'] === 'holiday' ? 'red' : 'green'" :text="ucfirst($this->todaySchedule['status'])" xs />
+                    </div>
+                </div>
+            @endif
+
+            {{-- Location Status --}}
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300">Location
+                        Status</span>
+                    <button x-on:click="getLocation()" class="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                        Refresh
+                    </button>
+                </div>
+
+                <div x-show="$wire.locationLoading" class="text-center py-4">
+                    <div
+                        class="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-2">
+                    </div>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Getting location...</p>
+                </div>
+
+                <div x-show="$wire.locationError && !$wire.locationLoading"
+                    class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-3">
+                    <div class="flex items-start gap-2">
+                        <x-icon name="exclamation-circle" class="w-5 h-5 text-red-600 dark:text-red-400" />
+                        <div>
+                            <p class="text-sm font-medium text-red-900 dark:text-red-100">Location Error</p>
+                            <p class="text-xs text-red-700 dark:text-red-300" x-text="$wire.locationError"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div x-show="!$wire.locationLoading && !$wire.locationError" class="space-y-2">
+                    @foreach ($this->officeLocations as $office)
+                        @php
+                            $distance = null;
+                            $isInRange = false;
+                            if ($this->latitude && $this->longitude) {
+                                $distance = $this->calculateDistance(
+                                    $this->latitude,
+                                    $this->longitude,
+                                    $office->latitude,
+                                    $office->longitude,
+                                );
+                                $isInRange = $distance <= $office->radius;
+                            }
+                        @endphp
+
+                        <div
+                            class="flex items-center justify-between p-3 rounded-lg {{ $isInRange ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700' : 'bg-gray-50 dark:bg-gray-700/50' }}">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-8 h-8 rounded-lg flex items-center justify-center {{ $isInRange ? 'bg-green-100 dark:bg-green-800' : 'bg-gray-200 dark:bg-gray-600' }}">
+                                    <x-icon name="building-office"
+                                        class="w-4 h-4 {{ $isInRange ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400' }}" />
+                                </div>
+                                <div>
+                                    <div
+                                        class="text-sm font-medium {{ $isInRange ? 'text-green-900 dark:text-green-100' : 'text-gray-900 dark:text-gray-100' }}">
+                                        {{ $office->name }}
+                                    </div>
+                                    @if ($distance !== null)
+                                        <div class="text-xs text-gray-600 dark:text-gray-400">
+                                            {{ number_format($distance, 0) }}m away
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <x-badge :color="$isInRange ? 'green' : 'gray'" :text="$office->radius . 'm'" xs />
+                                @if ($isInRange)
+                                    <x-icon name="check-circle" class="w-4 h-4 text-green-600 dark:text-green-400" />
+                                @endif
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            {{-- Action Buttons --}}
+            <div class="grid grid-cols-2 gap-3 md:gap-4">
+                <x-button wire:click="checkIn" :disabled="!$this->canCheckIn" color="green" class="w-full" loading="checkIn">
+                    <x-icon name="arrow-right-on-rectangle" class="w-4 h-4 mr-2" />
+                    Check In
+                </x-button>
+                <x-button wire:click="openNotesModal" :disabled="!$this->canCheckOut" color="blue" class="w-full">
+                    <x-icon name="arrow-left-on-rectangle" class="w-4 h-4 mr-2" />
+                    Check Out
+                </x-button>
+            </div>
         </div>
     </x-card>
 
-    {{-- Notes Modal --}}
-    <x-modal wire title="Check Out - {{ $this->isEarlyLeave ? 'Early Leave' : 'Work Summary' }}" size="2xl"
-        center>
-        <form wire:submit="checkOut" class="space-y-4">
+    {{-- Notes Modal - UNCHANGED --}}
+    <x-modal wire size="2xl" center persistent>
+        <x-slot:title>
+            <div class="flex items-center gap-4 my-3">
+                <div class="h-12 w-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center">
+                    <x-icon name="clipboard-document-check" class="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-gray-50">
+                        Check Out - {{ $this->isEarlyLeave ? 'Early Leave' : 'Work Summary' }}
+                    </h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">Complete your work day summary</p>
+                </div>
+            </div>
+        </x-slot:title>
+
+        <form wire:submit="checkOut" class="space-y-6">
             {{-- Work Notes dengan Quill --}}
             <div>
                 <label class="block text-sm font-medium mb-2 text-gray-900 dark:text-white">
@@ -439,18 +394,14 @@
         </form>
 
         <x-slot:footer>
-            <div class="flex justify-end gap-2">
-                <x-button color="gray" wire:click="closeNotesModal">
-                    Batal
+            <div class="flex flex-col sm:flex-row justify-end gap-3">
+                <x-button wire:click="closeNotesModal" color="secondary" outline
+                    class="w-full sm:w-auto order-2 sm:order-1">
+                    Cancel
                 </x-button>
-                <x-button color="blue" wire:click="checkOut" loading="checkOut">
-                    <div class="flex items-center space-x-2">
-                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd"
-                                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" />
-                        </svg>
-                        <span>Confirm Check Out</span>
-                    </div>
+                <x-button type="submit" wire:click="checkOut" color="blue" icon="check" loading="checkOut"
+                    class="w-full sm:w-auto order-1 sm:order-2">
+                    Confirm Check Out
                 </x-button>
             </div>
         </x-slot:footer>

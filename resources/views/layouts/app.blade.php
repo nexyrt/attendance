@@ -74,9 +74,9 @@
                     <x-side-bar.item text="Dashboard" icon="home" :route="$dashboardRoute" wire:navigate />
                 @endcan
 
-                @can('attendance.check-in')
+                {{-- @can('attendance.check-in')
                     <x-side-bar.item text="Check In/Out" icon="cursor-arrow-rays" :route="route('attendance.check-in')" wire:navigate />
-                @endcan
+                @endcan --}}
 
                 {{-- My Workspace - Staff --}}
                 @if (auth()->user()->hasAnyPermission(['attendance.view-own', 'leave-requests.view-own']))
@@ -87,7 +87,14 @@
                     @endcan
 
                     @can('leave-requests.view-own')
-                        <x-side-bar.item text="My Leaves" icon="calendar-days" :route="route('leave-requests.my.index')" wire:navigate />
+                        <div x-data="{ tooltip: false }" class="relative">
+                            <div @mouseenter="tooltip = true" @mouseleave="tooltip = false" class="pointer-events-none opacity-50">
+                                <x-side-bar.item text="My Leaves" icon="calendar-days" :route="route('leave-requests.my.index')" />
+                            </div>
+                            <div x-show="tooltip" class="absolute bottom-full left-0 mb-2 px-2 py-1 bg-gray-900 text-white text-sm rounded whitespace-nowrap">
+                                Under maintenance
+                            </div>
+                        </div>
                     @endcan
                 @endif
 

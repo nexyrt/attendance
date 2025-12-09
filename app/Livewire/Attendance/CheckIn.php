@@ -211,6 +211,13 @@ class CheckIn extends Component
         unset($this->canCheckIn);
         unset($this->canCheckOut);
 
+        // Dispatch event untuk update Alpine.js
+        $this->dispatch('attendance-updated', [
+            'checkInTime' => $attendance->check_in->format('Y-m-d H:i:s'),
+            'checkOutTime' => null,
+            'status' => 'checked_in'
+        ]);
+
         $message = $status === 'late'
             ? "Check-in successful, but you are late"
             : 'Check-in successful!';
@@ -253,6 +260,13 @@ class CheckIn extends Component
         unset($this->todayAttendance);
         unset($this->canCheckIn);
         unset($this->canCheckOut);
+
+        // Dispatch event untuk update Alpine.js
+        $this->dispatch('attendance-updated', [
+            'checkInTime' => $attendance->check_in->format('Y-m-d H:i:s'),
+            'checkOutTime' => $attendance->check_out->format('Y-m-d H:i:s'),
+            'status' => 'completed'
+        ]);
 
         $this->closeNotesModal();
         $this->success("Check-out successful! Working hours: {$workingHours}h");
