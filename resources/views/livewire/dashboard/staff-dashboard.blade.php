@@ -46,7 +46,7 @@
             @include('livewire.dashboard.partials.calendar-component')
 
             {{-- LEAVE BALANCE WIDGET --}}
-            <x-card>
+            {{-- <x-card>
                 <x-slot:header>
                     <div class="flex items-center gap-2">
                         <x-icon name="calendar" class="w-5 h-5 text-blue-600" />
@@ -77,7 +77,7 @@
                         </div>
                     @endforeach
                 </div>
-            </x-card>
+            </x-card> --}}
         </div>
 
         {{-- RIGHT COLUMN - Weekly & Activity --}}

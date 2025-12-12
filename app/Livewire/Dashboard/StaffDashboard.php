@@ -15,13 +15,14 @@ use Livewire\Component;
 class StaffDashboard extends Component
 {
     public $selectedDate;
-    public $selectedEvent = null;
+    public ?int $selectedDayIndex = null;
     public bool $eventModal = false;
 
     public function mount()
     {
         $this->selectedDate = now();
     }
+
     public function render(): View
     {
         return view('livewire.dashboard.staff-dashboard');
@@ -55,51 +56,30 @@ class StaffDashboard extends Component
         ];
     }
 
-    #[Computed]
-    public function leaveBalances(): array
-    {
-        $balance = Auth::user()
-            ->leaveBalances()
-            ->where('year', now()->year)
-            ->first();
+    // #[Computed]
+    // public function leaveBalances(): array
+    // {
+    //     $balance = Auth::user()
+    //         ->leaveBalances()
+    //         ->where('year', now()->year)
+    //         ->first();
 
-        if (!$balance) {
-            return [
-                ['type' => 'Annual Leave', 'icon' => 'sun', 'total' => 12, 'used' => 0, 'color' => 'text-blue-600'],
-                ['type' => 'Sick Leave', 'icon' => 'heart', 'total' => 12, 'used' => 0, 'color' => 'text-red-600'],
-                ['type' => 'Important Leave', 'icon' => 'shield-exclamation', 'total' => 12, 'used' => 0, 'color' => 'text-yellow-600'],
-                ['type' => 'Other', 'icon' => 'ellipsis-horizontal', 'total' => 12, 'used' => 0, 'color' => 'text-gray-600'],
-            ];
-        }
+    //     if (!$balance) {
+    //         return [
+    //             ['type' => 'Annual Leave', 'icon' => 'sun', 'total' => 12, 'used' => 0, 'color' => 'text-blue-600'],
+    //             ['type' => 'Sick Leave', 'icon' => 'heart', 'total' => 12, 'used' => 0, 'color' => 'text-red-600'],
+    //             ['type' => 'Important Leave', 'icon' => 'shield-exclamation', 'total' => 12, 'used' => 0, 'color' => 'text-yellow-600'],
+    //             ['type' => 'Other', 'icon' => 'ellipsis-horizontal', 'total' => 12, 'used' => 0, 'color' => 'text-gray-600'],
+    //         ];
+    //     }
 
-        return [
-            ['type' => 'Annual Leave', 'icon' => 'sun', 'total' => $balance->total_balance, 'used' => $balance->used_balance, 'color' => 'text-blue-600'],
-            ['type' => 'Sick Leave', 'icon' => 'heart', 'total' => $balance->total_balance, 'used' => $balance->used_balance, 'color' => 'text-red-600'],
-            ['type' => 'Important Leave', 'icon' => 'shield-exclamation', 'total' => $balance->total_balance, 'used' => $balance->used_balance, 'color' => 'text-yellow-600'],
-            ['type' => 'Other', 'icon' => 'ellipsis-horizontal', 'total' => $balance->total_balance, 'used' => $balance->used_balance, 'color' => 'text-gray-600'],
-        ];
-    }
-
-    #[Computed]
-    public function scheduleExceptions(): array
-    {
-        $user = Auth::user();
-
-        return ScheduleException::whereYear('date', now()->year)
-            ->whereHas('departments', function ($query) use ($user) {
-                $query->where('department_id', $user->department_id);
-            })
-            ->orderBy('date')
-            ->get()
-            ->map(fn($exc) => [
-                'id' => $exc->id,
-                'title' => $exc->title,
-                'date' => $exc->date->format('Y-m-d'),
-                'status' => $exc->status,
-                'note' => $exc->note
-            ])
-            ->toArray();
-    }
+    //     return [
+    //         ['type' => 'Annual Leave', 'icon' => 'sun', 'total' => $balance->total_balance, 'used' => $balance->used_balance, 'color' => 'text-blue-600'],
+    //         ['type' => 'Sick Leave', 'icon' => 'heart', 'total' => $balance->total_balance, 'used' => $balance->used_balance, 'color' => 'text-red-600'],
+    //         ['type' => 'Important Leave', 'icon' => 'shield-exclamation', 'total' => $balance->total_balance, 'used' => $balance->used_balance, 'color' => 'text-yellow-600'],
+    //         ['type' => 'Other', 'icon' => 'ellipsis-horizontal', 'total' => $balance->total_balance, 'used' => $balance->used_balance, 'color' => 'text-gray-600'],
+    //     ];
+    // }
 
     #[Computed]
     public function weekData(): array
@@ -214,31 +194,35 @@ class StaffDashboard extends Component
         ];
     }
 
+    #[Computed]
+    public function selectedEvent(): ?array
+    {
+        if ($this->selectedDayIndex === null) {
+            return null;
+        }
+
+        $day = $this->calendarData['days'][$this->selectedDayIndex] ?? null;
+
+        if (!$day || !$day['exception']) {
+            return null;
+        }
+
+        return [
+            ...$day['exception'],
+            'date' => $day['date']->format('l, F j, Y')
+        ];
+    }
+
     public function previousMonth(): void
     {
         $this->selectedDate = $this->selectedDate->subMonth();
+        unset($this->calendarData);
     }
 
     public function nextMonth(): void
     {
         $this->selectedDate = $this->selectedDate->addMonth();
-    }
-
-    public function showEventDetail($dayIndex): void
-    {
-        $day = $this->calendarData['days'][$dayIndex] ?? null;
-
-        if ($day && $day['exception']) {
-            $this->selectedEvent = $day['exception'];
-            $this->selectedEvent['date'] = $day['date']->format('l, F j, Y');
-            $this->eventModal = true;
-        }
-    }
-
-    public function closeEventModal(): void
-    {
-        $this->eventModal = false;
-        $this->selectedEvent = null;
+        unset($this->calendarData);
     }
 
     // ============================================================
@@ -253,5 +237,6 @@ class StaffDashboard extends Component
         unset($this->leaveBalances);
         unset($this->weekData);
         unset($this->activities);
+        unset($this->calendarData);
     }
 }

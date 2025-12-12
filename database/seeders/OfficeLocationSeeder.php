@@ -14,25 +14,11 @@ class OfficeLocationSeeder extends Seeder
     {
         $officeLocations = [
             [
-                'name' => 'Kantor Pusat Jakarta',
-                'latitude' => -6.2088,
-                'longitude' => 106.8456,
+                'name' => 'Main Office',
+                'latitude' => -0.45028193,
+                'longitude' => 117.14613855,
                 'radius' => 100, // 100 meters
-                'address' => 'Jl. Sudirman No. 123, Jakarta Pusat, DKI Jakarta 10220',
-            ],
-            [
-                'name' => 'Kantor Cabang Bandung',
-                'latitude' => -6.9175,
-                'longitude' => 107.6191,
-                'radius' => 150, // 150 meters
-                'address' => 'Jl. Asia Afrika No. 45, Bandung, Jawa Barat 40111',
-            ],
-            [
-                'name' => 'Kantor Cabang Surabaya',
-                'latitude' => -7.2575,
-                'longitude' => 112.7521,
-                'radius' => 120, // 120 meters
-                'address' => 'Jl. Tunjungan No. 67, Surabaya, Jawa Timur 60261',
+                'address' => 'Perumahan Pondok Alam Indah Blok D No. 3, RT.002/RW.005, Kec. Sempaja, Kota Samarinda, Kalimantan Timur 75243',
             ],
         ];
 
