@@ -39,8 +39,6 @@
 
             {{-- CHECK-IN COMPONENT INTEGRATION --}}
             <livewire:attendance.check-in />
-
-
         </div>
 
         {{-- CENTER COLUMN - Calendar --}}

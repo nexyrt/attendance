@@ -24,6 +24,29 @@ class CheckIn extends Component
     public ?string $notes = null;
     public ?string $early_leave_reason = null;
 
+    // Stopwatch properties
+    public ?string $check_in_time = null;
+    public ?string $check_out_time = null;
+    public ?float $working_hours = null;
+    public bool $has_checked_in = false;
+    public bool $has_checked_out = false;
+
+    public function mount()
+    {
+        $attendance = Attendance::where('user_id', Auth::id())
+            ->where('date', today())
+            ->first();
+
+        if ($attendance) {
+            $this->check_in_time = $attendance->check_in?->format('Y-m-d H:i:s');
+            $this->check_out_time = $attendance->check_out?->format('Y-m-d H:i:s');
+            $this->working_hours = $attendance->working_hours;
+
+            $this->has_checked_in = !is_null($attendance->check_in);
+            $this->has_checked_out = !is_null($attendance->check_out);
+        }
+    }
+
     public function render(): View
     {
         return view('livewire.attendance.check-in');
@@ -153,11 +176,6 @@ class CheckIn extends Component
         $this->locationLoading = false;
     }
 
-    public function openNotesModal(): void
-    {
-        $this->modal = true;
-    }
-
     public function closeNotesModal(): void
     {
         $this->modal = false;
@@ -206,16 +224,18 @@ class CheckIn extends Component
 
         $attendance->save();
 
-        // Reset computed properties untuk refresh data
+        // Update properties untuk stopwatch
+        $this->check_in_time = $attendance->check_in->format('Y-m-d H:i:s');
+        $this->has_checked_in = true;
+
+        // Reset computed properties
         unset($this->todayAttendance);
         unset($this->canCheckIn);
         unset($this->canCheckOut);
 
-        // Dispatch event untuk update Alpine.js
-        $this->dispatch('attendance-updated', [
-            'checkInTime' => $attendance->check_in->format('Y-m-d H:i:s'),
-            'checkOutTime' => null,
-            'status' => 'checked_in'
+        // Dispatch event untuk start stopwatch di Alpine.js
+        $this->dispatch('start-stopwatch', [
+            'checkInTime' => $this->check_in_time
         ]);
 
         $message = $status === 'late'
@@ -256,16 +276,19 @@ class CheckIn extends Component
 
         $attendance->save();
 
-        // Reset computed properties untuk refresh data
+        // Update properties untuk stopwatch
+        $this->check_out_time = $attendance->check_out->format('Y-m-d H:i:s');
+        $this->working_hours = $workingHours;
+        $this->has_checked_out = true;
+
+        // Reset computed properties
         unset($this->todayAttendance);
         unset($this->canCheckIn);
         unset($this->canCheckOut);
 
-        // Dispatch event untuk update Alpine.js
-        $this->dispatch('attendance-updated', [
-            'checkInTime' => $attendance->check_in->format('Y-m-d H:i:s'),
-            'checkOutTime' => $attendance->check_out->format('Y-m-d H:i:s'),
-            'status' => 'completed'
+        // Dispatch event untuk stop stopwatch di Alpine.js
+        $this->dispatch('stop-stopwatch', [
+            'workingHours' => $workingHours
         ]);
 
         $this->closeNotesModal();

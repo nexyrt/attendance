@@ -1,9 +1,12 @@
 <div x-data="{
     currentTime: '{{ now()->format('H:i:s') }}',
     status: '{{ $this->todayAttendance?->check_in && !$this->todayAttendance?->check_out ? 'checked_in' : ($this->todayAttendance?->check_out ? 'completed' : 'not_started') }}',
-    checkInTime: {{ $this->todayAttendance?->check_in ? "'" . $this->todayAttendance->check_in->format('Y-m-d H:i:s') . "'" : 'null' }},
-    checkOutTime: {{ $this->todayAttendance?->check_out ? "'" . $this->todayAttendance->check_out->format('Y-m-d H:i:s') . "'" : 'null' }},
+    checkInTime: {{ $check_in_time ? "'" . $check_in_time . "'" : 'null' }},
+    checkOutTime: {{ $check_out_time ? "'" . $check_out_time . "'" : 'null' }},
     workingHours: '00:00:00',
+    workingHoursInterval: null,
+    totalWorkingHours: {{ $working_hours ?? 'null' }},
+    hasCheckedOut: {{ $has_checked_out ? 'true' : 'false' }},
 
     updateClock() {
         setInterval(() => {
@@ -13,21 +16,71 @@
     },
 
     updateWorkingHours() {
-        setInterval(() => {
-            if (this.checkInTime) {
+        // Jika sudah check-out, hitung dari selisih waktu
+        if (this.hasCheckedOut && this.checkInTime && this.checkOutTime) {
+            const checkIn = new Date(this.checkInTime);
+            const checkOut = new Date(this.checkOutTime);
+            const diffInSeconds = Math.floor((checkOut - checkIn) / 1000);
+            this.workingHours = this.formatTimeFromSeconds(diffInSeconds);
+            return;
+        }
+
+        // Jika sudah check-in tapi belum check-out, hitung real-time
+        if (this.checkInTime && !this.checkOutTime) {
+            this.workingHoursInterval = setInterval(() => {
                 const checkIn = new Date(this.checkInTime);
-                const checkOut = this.checkOutTime ? new Date(this.checkOutTime) : new Date();
-                const diff = checkOut - checkIn;
+                const now = new Date();
+                const diffInSeconds = Math.floor((now - checkIn) / 1000);
+                this.workingHours = this.formatTimeFromSeconds(diffInSeconds);
+            }, 1000);
+        } else {
+            this.workingHours = '00:00:00';
+        }
+    },
 
-                const hours = Math.floor(diff / 3600000);
-                const minutes = Math.floor((diff % 3600000) / 60000);
-                const seconds = Math.floor((diff % 60000) / 1000);
+    formatTimeFromSeconds(totalSeconds) {
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    },
 
-                this.workingHours = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-            } else {
-                this.workingHours = '00:00:00';
-            }
+    startStopwatch(checkInTime) {
+        this.checkInTime = checkInTime;
+        this.checkOutTime = null;
+        this.hasCheckedOut = false;
+
+        // Clear existing interval
+        if (this.workingHoursInterval) {
+            clearInterval(this.workingHoursInterval);
+        }
+
+        // Start new interval
+        this.workingHoursInterval = setInterval(() => {
+            const checkIn = new Date(this.checkInTime);
+            const now = new Date();
+            const diffInSeconds = Math.floor((now - checkIn) / 1000);
+            this.workingHours = this.formatTimeFromSeconds(diffInSeconds);
         }, 1000);
+    },
+
+    stopStopwatch(data) {
+        this.hasCheckedOut = true;
+        this.checkOutTime = data.checkOutTime;
+
+        // Stop interval
+        if (this.workingHoursInterval) {
+            clearInterval(this.workingHoursInterval);
+            this.workingHoursInterval = null;
+        }
+
+        // Hitung langsung dari selisih check-in dan check-out
+        if (this.checkInTime && this.checkOutTime) {
+            const checkIn = new Date(this.checkInTime);
+            const checkOut = new Date(this.checkOutTime);
+            const diffInSeconds = Math.floor((checkOut - checkIn) / 1000);
+            this.workingHours = this.formatTimeFromSeconds(diffInSeconds);
+        }
     },
 
     getLocation() {
@@ -60,11 +113,8 @@
 }" x-init="updateClock();
 updateWorkingHours();
 getLocation();"
-    @attendance-updated.window="
-    checkInTime = $event.detail.checkInTime || null;
-    checkOutTime = $event.detail.checkOutTime || null;
-    status = $event.detail.status || 'not_started';
-">
+    x-on:start-stopwatch.window="startStopwatch($event.detail[0].checkInTime); status = 'checked_in';"
+    x-on:stop-stopwatch.window="stopStopwatch($event.detail[0].workingHours); status = 'completed'; checkOutTime = new Date().toISOString();">
 
     {{-- CHECK-IN WIDGET --}}
     <x-card>
@@ -117,9 +167,8 @@ getLocation();"
                         <x-icon name="arrow-right-on-rectangle" class="w-3 h-3 md:w-4 md:h-4" />
                         <span class="text-xs md:text-sm font-medium">Check In</span>
                     </div>
-                    <div class="text-base md:text-lg font-bold text-gray-900 dark:text-gray-50"
-                        x-text="checkInTime ? new Date(checkInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'">
-                        --:--
+                    <div class="text-base md:text-lg font-bold text-gray-900 dark:text-gray-50">
+                        {{ $check_in_time ? \Carbon\Carbon::parse($check_in_time)->format('H:i:s') : '--:--' }}
                     </div>
                 </div>
                 <div
@@ -128,9 +177,8 @@ getLocation();"
                         <x-icon name="arrow-left-on-rectangle" class="w-3 h-3 md:w-4 md:h-4" />
                         <span class="text-xs md:text-sm font-medium">Check Out</span>
                     </div>
-                    <div class="text-base md:text-lg font-bold text-gray-900 dark:text-gray-50"
-                        x-text="checkOutTime ? new Date(checkOutTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--:--'">
-                        --:--
+                    <div class="text-base md:text-lg font-bold text-gray-900 dark:text-gray-50">
+                        {{ $check_out_time ? \Carbon\Carbon::parse($check_out_time)->format('H:i:s') : '--:--' }}
                     </div>
                 </div>
             </div>
@@ -167,84 +215,88 @@ getLocation();"
                                 @endif
                             </div>
                         </div>
-                        <x-badge :color="$this->todaySchedule['status'] === 'holiday' ? 'red' : 'green'" :text="ucfirst($this->todaySchedule['status'])" xs />
+                        @if ($this->todaySchedule['status'] === 'holiday')
+                            <x-badge color="red" class="text-xs">Holiday</x-badge>
+                        @elseif ($this->todaySchedule['status'] === 'event')
+                            <x-badge color="blue" class="text-xs">Event</x-badge>
+                        @else
+                            <x-badge color="green" class="text-xs">Work Day</x-badge>
+                        @endif
                     </div>
+                </div>
+            @else
+                <div
+                    class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 p-3 md:p-4 text-center">
+                    <x-icon name="calendar-days" class="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                    <p class="text-sm text-gray-600 dark:text-gray-400">No schedule available for today</p>
                 </div>
             @endif
 
             {{-- Location Status --}}
-            <div class="space-y-3">
+            <div
+                class="rounded-lg border border-gray-200 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-900/50 p-3 md:p-4">
                 <div class="flex items-center justify-between">
-                    <span class="text-xs md:text-sm font-medium text-gray-700 dark:text-gray-300">Location
-                        Status</span>
-                    <button x-on:click="getLocation()" class="text-xs text-blue-600 hover:text-blue-700 font-medium">
-                        Refresh
-                    </button>
-                </div>
-
-                <div x-show="$wire.locationLoading" class="text-center py-4">
-                    <div
-                        class="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-2">
+                    <div class="flex items-center gap-2">
+                        <x-icon name="map-pin" class="w-4 h-4 text-blue-600" />
+                        <span class="text-sm font-medium text-gray-900 dark:text-gray-50">Location</span>
                     </div>
-                    <p class="text-sm text-gray-600 dark:text-gray-400">Getting location...</p>
-                </div>
-
-                <div x-show="$wire.locationError && !$wire.locationLoading"
-                    class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg p-3">
-                    <div class="flex items-start gap-2">
-                        <x-icon name="exclamation-circle" class="w-5 h-5 text-red-600 dark:text-red-400" />
-                        <div>
-                            <p class="text-sm font-medium text-red-900 dark:text-red-100">Location Error</p>
-                            <p class="text-xs text-red-700 dark:text-red-300" x-text="$wire.locationError"></p>
+                    @if ($locationLoading)
+                        <div class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg"
+                                fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                            <span class="text-xs text-gray-600 dark:text-gray-400">Getting location...</span>
                         </div>
-                    </div>
+                    @elseif($locationError)
+                        <x-badge color="red" class="text-xs">{{ $locationError }}</x-badge>
+                    @elseif($latitude && $longitude)
+                        <x-badge color="green" class="text-xs">
+                            <x-icon name="check-circle" class="w-3 h-3 mr-1" />
+                            Located
+                        </x-badge>
+                    @endif
                 </div>
 
-                <div x-show="!$wire.locationLoading && !$wire.locationError" class="space-y-2">
-                    @foreach ($this->officeLocations as $office)
+                @if ($latitude && $longitude)
+                    <div class="mt-2 space-y-1">
+                        <div class="text-xs text-gray-600 dark:text-gray-400">
+                            Lat: {{ number_format($latitude, 6) }}, Lng: {{ number_format($longitude, 6) }}
+                        </div>
+
                         @php
-                            $distance = null;
-                            $isInRange = false;
-                            if ($this->latitude && $this->longitude) {
+                            $validOffice = null;
+                            foreach ($this->officeLocations as $office) {
                                 $distance = $this->calculateDistance(
-                                    $this->latitude,
-                                    $this->longitude,
+                                    $latitude,
+                                    $longitude,
                                     $office->latitude,
                                     $office->longitude,
                                 );
-                                $isInRange = $distance <= $office->radius;
+                                if ($distance <= $office->radius) {
+                                    $validOffice = $office;
+                                    break;
+                                }
                             }
                         @endphp
 
-                        <div
-                            class="flex items-center justify-between p-3 rounded-lg {{ $isInRange ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700' : 'bg-gray-50 dark:bg-gray-700/50' }}">
-                            <div class="flex items-center gap-3">
-                                <div
-                                    class="w-8 h-8 rounded-lg flex items-center justify-center {{ $isInRange ? 'bg-green-100 dark:bg-green-800' : 'bg-gray-200 dark:bg-gray-600' }}">
-                                    <x-icon name="building-office"
-                                        class="w-4 h-4 {{ $isInRange ? 'text-green-600 dark:text-green-400' : 'text-gray-600 dark:text-gray-400' }}" />
-                                </div>
-                                <div>
-                                    <div
-                                        class="text-sm font-medium {{ $isInRange ? 'text-green-900 dark:text-green-100' : 'text-gray-900 dark:text-gray-100' }}">
-                                        {{ $office->name }}
-                                    </div>
-                                    @if ($distance !== null)
-                                        <div class="text-xs text-gray-600 dark:text-gray-400">
-                                            {{ number_format($distance, 0) }}m away
-                                        </div>
-                                    @endif
-                                </div>
+                        @if ($validOffice)
+                            <div class="flex items-center gap-1 text-xs text-green-600 dark:text-green-400">
+                                <x-icon name="check-circle" class="w-3 h-3" />
+                                <span>In {{ $validOffice->name }}</span>
                             </div>
-                            <div class="flex items-center gap-2">
-                                <x-badge :color="$isInRange ? 'green' : 'gray'" :text="$office->radius . 'm'" xs />
-                                @if ($isInRange)
-                                    <x-icon name="check-circle" class="w-4 h-4 text-green-600 dark:text-green-400" />
-                                @endif
+                        @else
+                            <div class="flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
+                                <x-icon name="x-circle" class="w-3 h-3" />
+                                <span>Outside office area</span>
                             </div>
-                        </div>
-                    @endforeach
-                </div>
+                        @endif
+                    </div>
+                @endif
             </div>
 
             {{-- Action Buttons --}}
@@ -253,7 +305,7 @@ getLocation();"
                     <x-icon name="arrow-right-on-rectangle" class="w-4 h-4 mr-2" />
                     Check In
                 </x-button>
-                <x-button wire:click="openNotesModal" :disabled="!$this->canCheckOut" color="blue" class="w-full">
+                <x-button wire:click="$toggle('modal')" :disabled="!$this->canCheckOut" color="blue" class="w-full">
                     <x-icon name="arrow-left-on-rectangle" class="w-4 h-4 mr-2" />
                     Check Out
                 </x-button>
