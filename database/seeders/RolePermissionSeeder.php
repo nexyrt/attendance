@@ -76,6 +76,13 @@ class RolePermissionSeeder extends Seeder
             'attendance.view-team',
             'attendance.view-all',
 
+            // Attendance Requests
+            'attendance-requests.view-own',
+            'attendance-requests.view-all',
+            'attendance-requests.create',
+            'attendance-requests.approve',
+            'attendance-requests.delete',
+
             // Leave Requests
             'leave-requests.view-own',
             'leave-requests.view-pending',
@@ -118,6 +125,8 @@ class RolePermissionSeeder extends Seeder
             'dashboard.view',
             'attendance.check-in',
             'attendance.view-own',
+            'attendance-requests.view-own',
+            'attendance-requests.create',
             'leave-requests.view-own',
         ]);
         $this->command->line('  ✓ Staff: ' . $staff->permissions->count() . ' permissions');
@@ -128,6 +137,8 @@ class RolePermissionSeeder extends Seeder
             'dashboard.view',
             'attendance.check-in',
             'attendance.view-team',
+            'attendance-requests.view-all',
+            'attendance-requests.approve',
             'leave-requests.view-pending',
             'users.view',
             'schedule.view',
@@ -141,6 +152,9 @@ class RolePermissionSeeder extends Seeder
             'dashboard.view',
             'attendance.check-in',
             'attendance.view-all',
+            'attendance-requests.view-all',
+            'attendance-requests.approve',
+            'attendance-requests.delete',
             'leave-requests.view-pending',
             'users.view',
             'schedule.view',

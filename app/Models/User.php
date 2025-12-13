@@ -70,6 +70,15 @@ class User extends Authenticatable
     {
         return $this->hasMany(SalaryHistory::class);
     }
+    public function attendanceRequests()
+    {
+        return $this->hasMany(AttendanceRequest::class);
+    }
+
+    public function approvedAttendanceRequests()
+    {
+        return $this->hasMany(AttendanceRequest::class, 'approved_by');
+    }
 
     // ============================================================
     // HELPER METHODS

@@ -13,7 +13,6 @@ return new class extends Migration
             $table->foreignId('department_id')->constrained()->onDelete('cascade');
             $table->foreignId('schedule_exception_id')->constrained()->onDelete('cascade');
             $table->timestamps();
-
             $table->unique(['department_id', 'schedule_exception_id'], 'dept_schedule_exception_unique');
         });
     }
